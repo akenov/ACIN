@@ -76,7 +76,7 @@ class DataGenerator(keras.utils.Sequence):
             #print("Doing data noise augmentation.")
             data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
             # Data augmentation: by noise
-            num_frames = odata.shape[0]
+            num_seqncs = odata.shape[0]
             # print("num_frames %s " % num_frames)
             num_joints = odata.shape[1]
             joints_total = random.randint(1, 4)  # random num of joints to augment
@@ -88,7 +88,7 @@ class DataGenerator(keras.utils.Sequence):
                 joints_range.remove(id_j)
             # print(noise_joints)
             # for f in range(0, num_frames, 1):
-            for f in range(num_frames):
+            for f in range(num_seqncs):
                 # for j in range(0, num_joints, 1):
                 for j in range(num_joints):
                     #print(" %d %d " % (f,n))
@@ -105,26 +105,26 @@ class DataGenerator(keras.utils.Sequence):
         elif augtype == 'subsample':
             #print("Doing data subsample augmentation.")
             data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
-            num_frames = odata.shape[0]
-            num_steps = odata.shape[2]
+            num_seqncs = odata.shape[0]
+            num_frames = odata.shape[2]
             # Alternative go with all possible combination would be for d in (2,3,4) and for m in (2,3)
             # better generate more random epochs? #17.10.2018
-            for f in range(0, num_frames, 1):
+            for f in range(0, num_seqncs, 1):
                 d = random.randint(2, 4)  # random displacement to sequal (2, 3, 4)
                 m = random.randint(2, 3)  # random step to iterate (2, 3)
                 #print("Subsample %d random numbers d = %d, m = %d" % (f,d,m))
-                for s, p in zip(range(d, num_steps, m), range(0, num_steps, 1)):
+                for s, p in zip(range(d, num_frames, m), range(0, num_frames, 1)):
                     #print(s, p)
                     data_aug[f, :, p, :] = odata[f, :, s, :]
         elif augtype == 'interpol':
             # print("Doing time interpolation data augmentation")
             data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
-            num_frames = odata.shape[0]
+            num_seqncs = odata.shape[0]
             num_joints = odata.shape[1]
-            num_steps = odata.shape[2]
-            for f in range(0, num_frames, 1):
-                for j in range(0, num_joints, 1):
-                    for s, p in zip(range(0, num_steps, 1), range(0, num_steps, 2)):
+            num_frames = odata.shape[2]
+            for f in range(num_seqncs):
+                for j in range(num_joints):
+                    for s, p in zip(range(num_frames), range(0, num_frames, 2)):
                         print(" f=%d j=%d s=%d p=%d " % (f, j, s, p))
                         x_prev = odata[f, j, s, 0]
                         y_prev = odata[f, j, s, 1]

@@ -10,7 +10,7 @@ from datetime import datetime
 from keras import regularizers
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Reshape, Permute
-from keras.layers import Conv2D, MaxPooling2D, LSTM
+from keras.layers import Conv2D, MaxPooling2D, LSTM, Masking
 from keras.callbacks import TensorBoard
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
@@ -32,6 +32,18 @@ def normalize_data(data_):
     return data_
 
 
+def skeleton_reshape(frame_):
+    num_joints = 20
+    new_frame = np.zeros([num_joints, MAX_WIDTH, 3])
+    for frame_id in range(frame_.shape[0]):
+        # print(frame_id)
+        for joint in range(0, int(num_joints*3), 3):
+            # coord = frame_[frame_id, joint:joint+3]
+            # print(coord)
+            new_frame[int(joint/3), frame_id, :] = frame_[frame_id, joint:joint+3]
+    return new_frame
+
+
 def process_sample(sample_name):
     data_set = []
     labels = []
@@ -44,9 +56,7 @@ def process_sample(sample_name):
     walk_params = content[l+1].split(" ")
     walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
-    walk_sample = np.asarray(sample_data[walk_min: walk_max, :]).reshape([20, -1, 3])
-    walk_sample = np.pad(walk_sample, [(0, 0), (0, MAX_WIDTH - walk_sample.shape[1]), (0, 0)],
-                         mode='constant', constant_values=0)
+    walk_sample = skeleton_reshape(sample_data[walk_min: walk_max, :])
     data_set.append(walk_sample)
     labels.append(0)
     # print("Walk Sequence Length = %d Frames" % (walk_max - walk_min))
@@ -55,9 +65,7 @@ def process_sample(sample_name):
     sitdown_params = content[l+2].split(" ")
     sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
-    sitdown_sample = np.asarray(sample_data[sitdown_min: sitdown_max, :]).reshape([20, -1, 3])
-    sitdown_sample = np.pad(sitdown_sample, [(0, 0), (0, MAX_WIDTH - sitdown_sample.shape[1]), (0, 0)],
-                            mode='constant', constant_values=0)
+    sitdown_sample = skeleton_reshape(sample_data[sitdown_min: sitdown_max, :])
     data_set.append(sitdown_sample)
     labels.append(1)
     # print("SitDown Sequence Length = %d Frames" % (sitdown_max - sitdown_min))
@@ -66,9 +74,7 @@ def process_sample(sample_name):
     standup_params = content[l+3].split(" ")
     standup_min = int(np.where(sample_ids == int(standup_params[1].lstrip()))[0])
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
-    standup_sample = np.asarray(sample_data[standup_min: standup_max, :]).reshape([20, -1, 3])
-    standup_sample = np.pad(standup_sample, [(0, 0), (0, MAX_WIDTH - standup_sample.shape[1]), (0, 0)],
-                            mode='constant', constant_values=0)
+    standup_sample = skeleton_reshape(sample_data[standup_min: standup_max, :])
     data_set.append(standup_sample)
     labels.append(2)
     # print("StandUp Sequence Length = %d Frames" % (standup_max - standup_min))
@@ -77,9 +83,7 @@ def process_sample(sample_name):
     pickup_params = content[l+4].split(" ")
     pickup_min = int(np.where(sample_ids == int(pickup_params[1].lstrip()))[0])
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
-    pickup_sample = np.asarray(sample_data[pickup_min: pickup_max, :]).reshape([20, -1, 3])
-    pickup_sample = np.pad(pickup_sample, [(0, 0), (0, MAX_WIDTH - pickup_sample.shape[1]), (0, 0)],
-                           mode='constant', constant_values=0)
+    pickup_sample = skeleton_reshape(sample_data[pickup_min: pickup_max, :])
     data_set.append(pickup_sample)
     labels.append(3)
     # print("PickUp Sequence Length = %d Frames" % (pickup_max - pickup_min))
@@ -93,9 +97,7 @@ def process_sample(sample_name):
     else:
         carry_min = int(np.where(sample_ids == int(carry_params[1].lstrip()))[0])
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
-        carry_sample = np.asarray(sample_data[carry_min: carry_max, :]).reshape([20, -1, 3])
-        carry_sample = np.pad(carry_sample, [(0, 0), (0, MAX_WIDTH - carry_sample.shape[1]), (0, 0)],
-                              mode='constant', constant_values=0)
+        carry_sample = skeleton_reshape(sample_data[carry_min: carry_max, :])
         data_set.append(carry_sample)
         labels.append(4)
         # print("Carry Sequence Length = %d Frames" % (carry_max - carry_min))
@@ -104,9 +106,7 @@ def process_sample(sample_name):
     throw_params = content[l+6].split(" ")
     throw_min = int(np.where(sample_ids == int(throw_params[1].lstrip()))[0])
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
-    throw_sample = np.asarray(sample_data[throw_min: throw_max, :]).reshape([20, -1, 3])
-    throw_sample = np.pad(throw_sample, [(0, 0), (0, MAX_WIDTH - throw_sample.shape[1]), (0, 0)],
-                          mode='constant', constant_values=0)
+    throw_sample = skeleton_reshape(sample_data[throw_min: throw_max, :])
     data_set.append(throw_sample)
     labels.append(5)
     # print("Throw Sequence Length = %d Frames" % (throw_max - throw_min))
@@ -115,9 +115,7 @@ def process_sample(sample_name):
     push_params = content[l+7].split(" ")
     push_min = int(np.where(sample_ids == int(push_params[1].lstrip()))[0])
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
-    push_sample = np.asarray(sample_data[push_min: push_max, :]).reshape([20, -1, 3])
-    push_sample = np.pad(push_sample, [(0, 0), (0, MAX_WIDTH - push_sample.shape[1]), (0, 0)],
-                         mode='constant', constant_values=0)
+    push_sample = skeleton_reshape(sample_data[push_min: push_max, :])
     data_set.append(push_sample)
     labels.append(6)
     # print("Push Sequence Length = %d Frames" % (push_max - push_min))
@@ -126,9 +124,7 @@ def process_sample(sample_name):
     pull_params = content[l+8].split(" ")
     pull_min = int(np.where(sample_ids == int(pull_params[1].lstrip()))[0])
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
-    pull_sample = np.asarray(sample_data[pull_min: pull_max, :]).reshape([20, -1, 3])
-    pull_sample = np.pad(pull_sample, [(0, 0), (0, MAX_WIDTH - pull_sample.shape[1]), (0, 0)],
-                         mode='constant', constant_values=0)
+    pull_sample = skeleton_reshape(sample_data[pull_min: pull_max, :])
     data_set.append(pull_sample)
     labels.append(7)
     # print("Pull Sequence Length = %d Frames" % (pull_max-pull_min))
@@ -137,9 +133,7 @@ def process_sample(sample_name):
     wavehands_params = content[l+9].split(" ")
     wavehands_min = int(np.where(sample_ids == int(wavehands_params[1].lstrip()))[0])
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
-    wavehands_sample = np.asarray(sample_data[wavehands_min: wavehands_max, :]).reshape([20, -1, 3])
-    wavehands_sample = np.pad(wavehands_sample, [(0, 0), (0, MAX_WIDTH - wavehands_sample.shape[1]), (0, 0)],
-                              mode='constant', constant_values=0)
+    wavehands_sample = skeleton_reshape(sample_data[wavehands_min: wavehands_max, :])
     data_set.append(wavehands_sample)
     labels.append(8)
     # print("WaveHands Sequence Length = %d Frames" % (wavehands_max - wavehands_min))
@@ -148,9 +142,7 @@ def process_sample(sample_name):
     claphands_params = content[l+10].split(" ")
     claphands_min = int(np.where(sample_ids == int(claphands_params[1].lstrip()))[0])
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
-    claphands_sample = np.asarray(sample_data[claphands_min: claphands_max, :]).reshape([20, -1, 3])
-    claphands_sample = np.pad(claphands_sample, [(0, 0), (0, MAX_WIDTH - claphands_sample.shape[1]), (0, 0)],
-                              mode='constant', constant_values=0)
+    claphands_sample = skeleton_reshape(sample_data[claphands_min: claphands_max, :])
     data_set.append(claphands_sample)
     labels.append(9)
     # print("ClapHands Sequence Length = %d Frames" % (claphands_max - claphands_min))
@@ -534,6 +526,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn, ishape, list_idxes, augmentations_)
 
     conv_model = Sequential()
+    # conv_model.add(Masking(mask_value=0.0))
     conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, #batch_input_shape=bi_shape,
                              padding='same'))  #, kernel_regularizer=regularizers.l2(regul_val)
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -600,6 +593,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     #     print(layer.output_shape)
 
     nunez_model = Sequential()
+
     nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, #batch_input_shape=bi_shape,
                              padding='same'))  #, kernel_regularizer=regularizers.l2(regul_val)
     nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -612,10 +606,10 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
 
     nunez_model.set_weights(conv_model.get_weights())
 
-    nunez_model.add(Permute((2, 1, 3)))
     print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Reshape((15, 200))) # 25 for framesize of 200 and 15 for 120
     print(nunez_model.layers[-1].output_shape)
+    # nunez_model.add(Masking(mask_value=0.0))
     nunez_model.add(LSTM(100, return_sequences=True, stateful=False))  #batch_input_shape=(100, 25, 200), , kernel_regularizer=regularizers.l2(regul_val)
     # model.add(Dropout(0.5))
     nunez_model.add(Flatten())
@@ -743,17 +737,17 @@ num_epochs = 1  # fix the .fit method as well
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
     'none',
-    # 'shift',
-    # 'scale',
-    # 'noise',
+    'shift',
+    'scale',
+    'noise',
     # 'subsample',
     # 'interpol'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 train_models = [
-    'CNN',
+    # 'CNN',
     # 'LSTM',
-    'ConvRNN'
+    # 'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -765,7 +759,7 @@ content = actionLabels.readlines()
 actionLabels.close()
 
 for model in train_models:
-    for run in np.arange(0, iterations, 1):
+    for run in np.arange(iterations):
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
             print("Batch: " + key)
             print("Augmentations: %s" % augmentations)
@@ -791,6 +785,8 @@ for model in train_models:
                 for testfile in test_files:
                     train_files.remove(testfile)
                 print(test_files)
+                print("- - - - - - - - - - - -")
+                print(train_files)
 
                 for l in range(0, 220, 11):
                     # print("Parsing start line: %d " % l)
