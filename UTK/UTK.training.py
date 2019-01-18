@@ -737,15 +737,15 @@ num_epochs = 1  # fix the .fit method as well
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
     'none',
-    'shift',
-    'scale',
-    'noise',
+    # 'shift',
+    # 'scale',
+    # 'noise',
     # 'subsample',
-    # 'interpol'
+    'interpol'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 train_models = [
-    # 'CNN',
+    'CNN',
     # 'LSTM',
     # 'ConvRNN'
 ]
@@ -793,7 +793,7 @@ for model in train_models:
                     filename = DIRECTORY + "joints_" + content[l].strip('\n').lstrip() + ".txt"
                     print("Parsing file: %s " % filename)
                     file_data, file_labels = process_sample(filename)
-                    file_data = normalize_data(file_data)
+                    # file_data = normalize_data(file_data)
 
                     if any(test in filename for test in train_files):
                         data_train = np.append(data_train, file_data, axis=0)
@@ -809,12 +809,12 @@ for model in train_models:
 
                 # print(le.fit(np.asarray(labels_train)).classes_)
                 utk_dataset_train = np.asarray(data_train)
-                utk_dataset_train = normalize_data(utk_dataset_train)
+                # utk_dataset_train = normalize_data(utk_dataset_train)
                 feat_labenc = le.fit_transform(np.asarray(labels_train))
                 utk_labels_train = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
 
                 utk_dataset_test = np.asarray(data_test)
-                utk_dataset_test = normalize_data(utk_dataset_test)
+                # utk_dataset_test = normalize_data(utk_dataset_test)
                 feat_labenc = le.fit_transform(np.asarray(labels_test))
                 utk_labels_test = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
 
