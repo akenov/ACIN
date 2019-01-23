@@ -23,24 +23,34 @@ from DataGenerator import DataGenerator
 # Values are corrected to authors best knowledge
 
 
-def normalize_data(data_):
-    orig_shape = data_.shape
-    data_ = np.reshape(data_, [orig_shape[0], -1])
-    data_ = StandardScaler().fit_transform(data_)
-    data_ = MinMaxScaler(feature_range=(-1, 1)).fit_transform(data_)
-    data_ = np.reshape(data_, orig_shape)
-    return data_
+# def normalize_data(data_):
+#     orig_shape = data_.shape
+#     data_ = np.reshape(data_, [orig_shape[0], -1])
+#     data_ = StandardScaler().fit_transform(data_)
+#     # data_ = MinMaxScaler(feature_range=(-1, 1)).fit_transform(data_)
+#     data_ = np.reshape(data_, orig_shape)
+#     return data_
 
 
-def skeleton_reshape(frame_):
+def skeleton_reshape(frame_, extend=False):
     num_joints = 20
     new_frame = np.zeros([num_joints, MAX_WIDTH, 3])
-    for frame_id in range(frame_.shape[0]):
-        # print(frame_id)
-        for joint in range(0, int(num_joints*3), 3):
-            # coord = frame_[frame_id, joint:joint+3]
-            # print(coord)
-            new_frame[int(joint/3), frame_id, :] = frame_[frame_id, joint:joint+3]
+    frame_length = frame_.shape[0]
+    if extend:
+        for frame_id in range(0, frame_length, 3):
+            for joint in range(0, int(num_joints*3), 3):
+                frm_current = frame_[frame_id, joint:joint+3]
+                new_frame[int(joint/3), frame_id, :] = frm_current
+                if frame_id >= frame_length-2:
+                    continue
+                frm_next = frame_[int(frame_id+1), joint:joint+3]
+                frm_step = np.subtract(frm_next, frm_current)
+                new_frame[int(joint/3), int(frame_id+1), :] = np.add(frm_current, np.multiply(frm_step, 0.3))
+                new_frame[int(joint/3), int(frame_id+2), :] = np.add(frm_current, np.multiply(frm_step, 0.75))
+    else:
+        for frame_id in range(frame_length):
+            for joint in range(0, int(num_joints*3), 3):
+                new_frame[int(joint/3), frame_id, :] = frame_[frame_id, joint:joint+3]
     return new_frame
 
 
@@ -56,7 +66,7 @@ def process_sample(sample_name):
     walk_params = content[l+1].split(" ")
     walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
-    walk_sample = skeleton_reshape(sample_data[walk_min: walk_max, :])
+    walk_sample = skeleton_reshape(sample_data[walk_min: walk_max, :], extend=False)
     data_set.append(walk_sample)
     labels.append(0)
     # print("Walk Sequence Length = %d Frames" % (walk_max - walk_min))
@@ -65,7 +75,7 @@ def process_sample(sample_name):
     sitdown_params = content[l+2].split(" ")
     sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
-    sitdown_sample = skeleton_reshape(sample_data[sitdown_min: sitdown_max, :])
+    sitdown_sample = skeleton_reshape(sample_data[sitdown_min: sitdown_max, :], extend=False)
     data_set.append(sitdown_sample)
     labels.append(1)
     # print("SitDown Sequence Length = %d Frames" % (sitdown_max - sitdown_min))
@@ -74,7 +84,7 @@ def process_sample(sample_name):
     standup_params = content[l+3].split(" ")
     standup_min = int(np.where(sample_ids == int(standup_params[1].lstrip()))[0])
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
-    standup_sample = skeleton_reshape(sample_data[standup_min: standup_max, :])
+    standup_sample = skeleton_reshape(sample_data[standup_min: standup_max, :], extend=False)
     data_set.append(standup_sample)
     labels.append(2)
     # print("StandUp Sequence Length = %d Frames" % (standup_max - standup_min))
@@ -83,7 +93,7 @@ def process_sample(sample_name):
     pickup_params = content[l+4].split(" ")
     pickup_min = int(np.where(sample_ids == int(pickup_params[1].lstrip()))[0])
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
-    pickup_sample = skeleton_reshape(sample_data[pickup_min: pickup_max, :])
+    pickup_sample = skeleton_reshape(sample_data[pickup_min: pickup_max, :], extend=False)
     data_set.append(pickup_sample)
     labels.append(3)
     # print("PickUp Sequence Length = %d Frames" % (pickup_max - pickup_min))
@@ -97,7 +107,7 @@ def process_sample(sample_name):
     else:
         carry_min = int(np.where(sample_ids == int(carry_params[1].lstrip()))[0])
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
-        carry_sample = skeleton_reshape(sample_data[carry_min: carry_max, :])
+        carry_sample = skeleton_reshape(sample_data[carry_min: carry_max, :], extend=False)
         data_set.append(carry_sample)
         labels.append(4)
         # print("Carry Sequence Length = %d Frames" % (carry_max - carry_min))
@@ -106,7 +116,7 @@ def process_sample(sample_name):
     throw_params = content[l+6].split(" ")
     throw_min = int(np.where(sample_ids == int(throw_params[1].lstrip()))[0])
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
-    throw_sample = skeleton_reshape(sample_data[throw_min: throw_max, :])
+    throw_sample = skeleton_reshape(sample_data[throw_min: throw_max, :], extend=True)
     data_set.append(throw_sample)
     labels.append(5)
     # print("Throw Sequence Length = %d Frames" % (throw_max - throw_min))
@@ -115,7 +125,7 @@ def process_sample(sample_name):
     push_params = content[l+7].split(" ")
     push_min = int(np.where(sample_ids == int(push_params[1].lstrip()))[0])
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
-    push_sample = skeleton_reshape(sample_data[push_min: push_max, :])
+    push_sample = skeleton_reshape(sample_data[push_min: push_max, :],extend=True)
     data_set.append(push_sample)
     labels.append(6)
     # print("Push Sequence Length = %d Frames" % (push_max - push_min))
@@ -124,7 +134,7 @@ def process_sample(sample_name):
     pull_params = content[l+8].split(" ")
     pull_min = int(np.where(sample_ids == int(pull_params[1].lstrip()))[0])
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
-    pull_sample = skeleton_reshape(sample_data[pull_min: pull_max, :])
+    pull_sample = skeleton_reshape(sample_data[pull_min: pull_max, :], extend=True)
     data_set.append(pull_sample)
     labels.append(7)
     # print("Pull Sequence Length = %d Frames" % (pull_max-pull_min))
@@ -133,7 +143,7 @@ def process_sample(sample_name):
     wavehands_params = content[l+9].split(" ")
     wavehands_min = int(np.where(sample_ids == int(wavehands_params[1].lstrip()))[0])
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
-    wavehands_sample = skeleton_reshape(sample_data[wavehands_min: wavehands_max, :])
+    wavehands_sample = skeleton_reshape(sample_data[wavehands_min: wavehands_max, :], extend=False)
     data_set.append(wavehands_sample)
     labels.append(8)
     # print("WaveHands Sequence Length = %d Frames" % (wavehands_max - wavehands_min))
@@ -142,7 +152,7 @@ def process_sample(sample_name):
     claphands_params = content[l+10].split(" ")
     claphands_min = int(np.where(sample_ids == int(claphands_params[1].lstrip()))[0])
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
-    claphands_sample = skeleton_reshape(sample_data[claphands_min: claphands_max, :])
+    claphands_sample = skeleton_reshape(sample_data[claphands_min: claphands_max, :], extend=False)
     data_set.append(claphands_sample)
     labels.append(9)
     # print("ClapHands Sequence Length = %d Frames" % (claphands_max - claphands_min))
@@ -697,25 +707,25 @@ sample_names = [
 
 batch_names = [
     ('kfold0', 's01_e01'),
-    ('kfold0', 's02_e01'),
     ('kfold0', 's01_e02'),
-    ('kfold0', 's02_e02'),
+    ('kfold1', 's02_e01'),
+    ('kfold1', 's02_e02'),
     ('kfold2', 's03_e01'),
-    ('kfold2', 's04_e01'),
     ('kfold2', 's03_e02'),
-    ('kfold2', 's04_e02'),
+    ('kfold3', 's04_e01'),
+    ('kfold3', 's04_e02'),
     ('kfold4', 's05_e01'),
-    ('kfold4', 's06_e01'),
     ('kfold4', 's05_e02'),
-    ('kfold4', 's06_e02'),
+    ('kfold5', 's06_e01'),
+    ('kfold5', 's06_e02'),
     ('kfold6', 's07_e01'),
-    ('kfold6', 's08_e01'),
     ('kfold6', 's07_e02'),
-    ('kfold6', 's08_e02'),
+    ('kfold7', 's08_e01'),
+    ('kfold7', 's08_e02'),
     ('kfold8', 's09_e01'),
-    ('kfold8', 's10_e01'),
     ('kfold8', 's09_e02'),
-    ('kfold8', 's10_e02')
+    ('kfold9', 's10_e01'),
+    ('kfold9', 's10_e02')
 ]
 
 DATASET_NAME = 'UTK'
@@ -727,8 +737,6 @@ MAX_WIDTH = 120
 # EDITABLE PARAMETERS
 DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
 UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
-# directory = "/home/antonk/Downloads/UTKinect3D/joints/"
-# UTKLABELSFILE = "/home/antonk/Downloads/UTKinect3D/actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 
@@ -793,7 +801,6 @@ for model in train_models:
                     filename = DIRECTORY + "joints_" + content[l].strip('\n').lstrip() + ".txt"
                     print("Parsing file: %s " % filename)
                     file_data, file_labels = process_sample(filename)
-                    # file_data = normalize_data(file_data)
 
                     if any(test in filename for test in train_files):
                         data_train = np.append(data_train, file_data, axis=0)
