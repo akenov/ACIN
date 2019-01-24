@@ -23,15 +23,6 @@ from DataGenerator import DataGenerator
 # Values are corrected to authors best knowledge
 
 
-# def normalize_data(data_):
-#     orig_shape = data_.shape
-#     data_ = np.reshape(data_, [orig_shape[0], -1])
-#     data_ = StandardScaler().fit_transform(data_)
-#     # data_ = MinMaxScaler(feature_range=(-1, 1)).fit_transform(data_)
-#     data_ = np.reshape(data_, orig_shape)
-#     return data_
-
-
 def skeleton_reshape(frame_):
     num_joints = 20
     avg_length = 30
@@ -55,6 +46,75 @@ def skeleton_reshape(frame_):
     return new_frame
 
 
+def partial_fit_data_to_scaler(sample_name):
+    sample_ = np.loadtxt(sample_name)
+    sample_data = sample_[:, 1:]
+    sample_ids = np.array(sample_[:, 0]).astype(int).reshape([-1, 1])
+
+    # Load ID range for action Walk [0]
+    walk_params = content[l+1].split(" ")
+    walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
+    walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[walk_min: walk_max, :])
+
+    # Load ID range for action SitDown [1]
+    sitdown_params = content[l+2].split(" ")
+    sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
+    sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[sitdown_min: sitdown_max, :])
+
+    # Load ID range for action StandUp [2]
+    standup_params = content[l+3].split(" ")
+    standup_min = int(np.where(sample_ids == int(standup_params[1].lstrip()))[0])
+    standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[standup_min: standup_max, :])
+
+    # Load ID range for action PickUp [3]
+    pickup_params = content[l+4].split(" ")
+    pickup_min = int(np.where(sample_ids == int(pickup_params[1].lstrip()))[0])
+    pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[pickup_min: pickup_max, :])
+
+    # Load ID range for action Carry [4]
+    carry_params = content[l+5].split(" ")
+    if 'NaN' in carry_params:
+        print("Carry Value NaN detected. Filling in blanks.")
+    else:
+        carry_min = int(np.where(sample_ids == int(carry_params[1].lstrip()))[0])
+        carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
+        scaler.partial_fit(sample_data[carry_min: carry_max, :])
+
+    # Load ID range for action Throw [5]
+    throw_params = content[l+6].split(" ")
+    throw_min = int(np.where(sample_ids == int(throw_params[1].lstrip()))[0])
+    throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[throw_min: throw_max, :])
+
+    # Load ID range for action Push [6]
+    push_params = content[l+7].split(" ")
+    push_min = int(np.where(sample_ids == int(push_params[1].lstrip()))[0])
+    push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[push_min: push_max, :])
+
+    # Load ID range for action Pull [7]
+    pull_params = content[l+8].split(" ")
+    pull_min = int(np.where(sample_ids == int(pull_params[1].lstrip()))[0])
+    pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[pull_min: pull_max, :])
+
+    # Load ID range for action WaveHands [8]
+    wavehands_params = content[l+9].split(" ")
+    wavehands_min = int(np.where(sample_ids == int(wavehands_params[1].lstrip()))[0])
+    wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[wavehands_min: wavehands_max, :])
+
+    # Load ID range for action ClapHands [9]
+    claphands_params = content[l+10].split(" ")
+    claphands_min = int(np.where(sample_ids == int(claphands_params[1].lstrip()))[0])
+    claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
+    scaler.partial_fit(sample_data[claphands_min: claphands_max, :])
+
+
 def process_sample(sample_name):
     data_set = []
     labels = []
@@ -67,7 +127,8 @@ def process_sample(sample_name):
     walk_params = content[l+1].split(" ")
     walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
-    walk_sample = skeleton_reshape(sample_data[walk_min: walk_max, :])
+    normed_sample_walk = scaler.transform(sample_data[walk_min: walk_max, :])
+    walk_sample = skeleton_reshape(normed_sample_walk)
     data_set.append(walk_sample)
     labels.append(0)
     # print("Walk Sequence Length = %d Frames" % (walk_max - walk_min))
@@ -76,7 +137,8 @@ def process_sample(sample_name):
     sitdown_params = content[l+2].split(" ")
     sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
-    sitdown_sample = skeleton_reshape(sample_data[sitdown_min: sitdown_max, :])
+    normed_sample_sitdown = scaler.transform(sample_data[sitdown_min: sitdown_max, :])
+    sitdown_sample = skeleton_reshape(normed_sample_sitdown)
     data_set.append(sitdown_sample)
     labels.append(1)
     # print("SitDown Sequence Length = %d Frames" % (sitdown_max - sitdown_min))
@@ -85,7 +147,8 @@ def process_sample(sample_name):
     standup_params = content[l+3].split(" ")
     standup_min = int(np.where(sample_ids == int(standup_params[1].lstrip()))[0])
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
-    standup_sample = skeleton_reshape(sample_data[standup_min: standup_max, :])
+    normed_sample_standup = scaler.transform(sample_data[standup_min: standup_max, :])
+    standup_sample = skeleton_reshape(normed_sample_standup)
     data_set.append(standup_sample)
     labels.append(2)
     # print("StandUp Sequence Length = %d Frames" % (standup_max - standup_min))
@@ -94,7 +157,8 @@ def process_sample(sample_name):
     pickup_params = content[l+4].split(" ")
     pickup_min = int(np.where(sample_ids == int(pickup_params[1].lstrip()))[0])
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
-    pickup_sample = skeleton_reshape(sample_data[pickup_min: pickup_max, :])
+    normed_sample_pickup = scaler.transform(sample_data[pickup_min: pickup_max, :])
+    pickup_sample = skeleton_reshape(normed_sample_pickup)
     data_set.append(pickup_sample)
     labels.append(3)
     # print("PickUp Sequence Length = %d Frames" % (pickup_max - pickup_min))
@@ -108,7 +172,8 @@ def process_sample(sample_name):
     else:
         carry_min = int(np.where(sample_ids == int(carry_params[1].lstrip()))[0])
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
-        carry_sample = skeleton_reshape(sample_data[carry_min: carry_max, :])
+        normed_sample_carry = scaler.transform(sample_data[carry_min: carry_max, :])
+        carry_sample = skeleton_reshape(normed_sample_carry)
         data_set.append(carry_sample)
         labels.append(4)
         # print("Carry Sequence Length = %d Frames" % (carry_max - carry_min))
@@ -117,7 +182,8 @@ def process_sample(sample_name):
     throw_params = content[l+6].split(" ")
     throw_min = int(np.where(sample_ids == int(throw_params[1].lstrip()))[0])
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
-    throw_sample = skeleton_reshape(sample_data[throw_min: throw_max, :])
+    normed_sample_throw = scaler.transform(sample_data[throw_min: throw_max, :])
+    throw_sample = skeleton_reshape(normed_sample_throw)
     data_set.append(throw_sample)
     labels.append(5)
     # print("Throw Sequence Length = %d Frames" % (throw_max - throw_min))
@@ -126,7 +192,8 @@ def process_sample(sample_name):
     push_params = content[l+7].split(" ")
     push_min = int(np.where(sample_ids == int(push_params[1].lstrip()))[0])
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
-    push_sample = skeleton_reshape(sample_data[push_min: push_max, :])
+    normed_sample_push = scaler.transform(sample_data[push_min: push_max, :])
+    push_sample = skeleton_reshape(normed_sample_push)
     data_set.append(push_sample)
     labels.append(6)
     # print("Push Sequence Length = %d Frames" % (push_max - push_min))
@@ -135,7 +202,8 @@ def process_sample(sample_name):
     pull_params = content[l+8].split(" ")
     pull_min = int(np.where(sample_ids == int(pull_params[1].lstrip()))[0])
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
-    pull_sample = skeleton_reshape(sample_data[pull_min: pull_max, :])
+    normed_sample_pull = scaler.transform(sample_data[pull_min: pull_max, :])
+    pull_sample = skeleton_reshape(normed_sample_pull)
     data_set.append(pull_sample)
     labels.append(7)
     # print("Pull Sequence Length = %d Frames" % (pull_max-pull_min))
@@ -144,7 +212,8 @@ def process_sample(sample_name):
     wavehands_params = content[l+9].split(" ")
     wavehands_min = int(np.where(sample_ids == int(wavehands_params[1].lstrip()))[0])
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
-    wavehands_sample = skeleton_reshape(sample_data[wavehands_min: wavehands_max, :])
+    normed_sample_wavehands = scaler.transform(sample_data[wavehands_min: wavehands_max, :])
+    wavehands_sample = skeleton_reshape(normed_sample_wavehands)
     data_set.append(wavehands_sample)
     labels.append(8)
     # print("WaveHands Sequence Length = %d Frames" % (wavehands_max - wavehands_min))
@@ -153,7 +222,8 @@ def process_sample(sample_name):
     claphands_params = content[l+10].split(" ")
     claphands_min = int(np.where(sample_ids == int(claphands_params[1].lstrip()))[0])
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
-    claphands_sample = skeleton_reshape(sample_data[claphands_min: claphands_max, :])
+    normed_sample_claphands = scaler.transform(sample_data[claphands_min: claphands_max, :])
+    claphands_sample = skeleton_reshape(normed_sample_claphands)
     data_set.append(claphands_sample)
     labels.append(9)
     # print("ClapHands Sequence Length = %d Frames" % (claphands_max - claphands_min))
@@ -709,24 +779,24 @@ sample_names = [
 batch_names = [
     ('kfold0', 's01_e01'),
     ('kfold0', 's01_e02'),
-    ('kfold1', 's02_e01'),
-    ('kfold1', 's02_e02'),
+    ('kfold0', 's02_e01'),
+    ('kfold0', 's02_e02'),
     ('kfold2', 's03_e01'),
     ('kfold2', 's03_e02'),
-    ('kfold3', 's04_e01'),
-    ('kfold3', 's04_e02'),
+    ('kfold2', 's04_e01'),
+    ('kfold2', 's04_e02'),
     ('kfold4', 's05_e01'),
     ('kfold4', 's05_e02'),
-    ('kfold5', 's06_e01'),
-    ('kfold5', 's06_e02'),
+    ('kfold4', 's06_e01'),
+    ('kfold4', 's06_e02'),
     ('kfold6', 's07_e01'),
     ('kfold6', 's07_e02'),
-    ('kfold7', 's08_e01'),
-    ('kfold7', 's08_e02'),
+    ('kfold6', 's08_e01'),
+    ('kfold6', 's08_e02'),
     ('kfold8', 's09_e01'),
     ('kfold8', 's09_e02'),
-    ('kfold9', 's10_e01'),
-    ('kfold9', 's10_e02')
+    ('kfold8', 's10_e01'),
+    ('kfold8', 's10_e02')
 ]
 
 DATASET_NAME = 'UTK'
@@ -764,6 +834,7 @@ train_models = [
 
 le = LabelEncoder()
 ohe = OneHotEncoder(sparse=False)
+scaler = StandardScaler()
 
 actionLabels = open(UTKLABELSFILE, "r")
 content = actionLabels.readlines()
@@ -799,6 +870,12 @@ for model in train_models:
                 print("- - - - - - - - - - - -")
                 print(train_files)
 
+                print("Sipping through the data fitting the scaler")
+                for l in range(0, 220, 11):
+                    # print("Parsing start line: %d " % l)
+                    filename = DIRECTORY + "joints_" + content[l].strip('\n').lstrip() + ".txt"
+                    partial_fit_data_to_scaler(filename)
+
                 for l in range(0, 220, 11):
                     # print("Parsing start line: %d " % l)
                     filename = DIRECTORY + "joints_" + content[l].strip('\n').lstrip() + ".txt"
@@ -819,12 +896,10 @@ for model in train_models:
 
                 # print(le.fit(np.asarray(labels_train)).classes_)
                 utk_dataset_train = np.asarray(data_train)
-                # utk_dataset_train = normalize_data(utk_dataset_train)
                 feat_labenc = le.fit_transform(np.asarray(labels_train))
                 utk_labels_train = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
 
                 utk_dataset_test = np.asarray(data_test)
-                # utk_dataset_test = normalize_data(utk_dataset_test)
                 feat_labenc = le.fit_transform(np.asarray(labels_test))
                 utk_labels_test = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
 
