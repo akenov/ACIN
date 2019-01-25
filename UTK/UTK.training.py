@@ -127,8 +127,10 @@ def process_sample(sample_name):
     walk_params = content[l+1].split(" ")
     walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
-    normed_sample_walk = scaler.transform(sample_data[walk_min: walk_max, :])
-    walk_sample = skeleton_reshape(normed_sample_walk)
+    walk_sample = sample_data[walk_min: walk_max, :]
+    if USE_SCALER:
+        walk_sample = scaler.transform(walk_sample)
+    walk_sample = skeleton_reshape(walk_sample)
     data_set.append(walk_sample)
     labels.append(0)
     # print("Walk Sequence Length = %d Frames" % (walk_max - walk_min))
@@ -137,8 +139,10 @@ def process_sample(sample_name):
     sitdown_params = content[l+2].split(" ")
     sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
-    normed_sample_sitdown = scaler.transform(sample_data[sitdown_min: sitdown_max, :])
-    sitdown_sample = skeleton_reshape(normed_sample_sitdown)
+    sitdown_sample = sample_data[sitdown_min: sitdown_max, :]
+    if USE_SCALER:
+        sitdown_sample = scaler.transform(sitdown_sample)
+    sitdown_sample = skeleton_reshape(sitdown_sample)
     data_set.append(sitdown_sample)
     labels.append(1)
     # print("SitDown Sequence Length = %d Frames" % (sitdown_max - sitdown_min))
@@ -147,8 +151,10 @@ def process_sample(sample_name):
     standup_params = content[l+3].split(" ")
     standup_min = int(np.where(sample_ids == int(standup_params[1].lstrip()))[0])
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
-    normed_sample_standup = scaler.transform(sample_data[standup_min: standup_max, :])
-    standup_sample = skeleton_reshape(normed_sample_standup)
+    standup_sample = sample_data[standup_min: standup_max, :]
+    if USE_SCALER:
+        standup_sample = scaler.transform(standup_sample)
+    standup_sample = skeleton_reshape(standup_sample)
     data_set.append(standup_sample)
     labels.append(2)
     # print("StandUp Sequence Length = %d Frames" % (standup_max - standup_min))
@@ -157,8 +163,10 @@ def process_sample(sample_name):
     pickup_params = content[l+4].split(" ")
     pickup_min = int(np.where(sample_ids == int(pickup_params[1].lstrip()))[0])
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
-    normed_sample_pickup = scaler.transform(sample_data[pickup_min: pickup_max, :])
-    pickup_sample = skeleton_reshape(normed_sample_pickup)
+    pickup_sample = sample_data[pickup_min: pickup_max, :]
+    if USE_SCALER:
+        pickup_sample = scaler.transform(pickup_sample)
+    pickup_sample = skeleton_reshape(pickup_sample)
     data_set.append(pickup_sample)
     labels.append(3)
     # print("PickUp Sequence Length = %d Frames" % (pickup_max - pickup_min))
@@ -172,8 +180,10 @@ def process_sample(sample_name):
     else:
         carry_min = int(np.where(sample_ids == int(carry_params[1].lstrip()))[0])
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
-        normed_sample_carry = scaler.transform(sample_data[carry_min: carry_max, :])
-        carry_sample = skeleton_reshape(normed_sample_carry)
+        carry_sample = sample_data[carry_min: carry_max, :]
+        if USE_SCALER:
+            carry_sample = scaler.transform(carry_sample)
+        carry_sample = skeleton_reshape(carry_sample)
         data_set.append(carry_sample)
         labels.append(4)
         # print("Carry Sequence Length = %d Frames" % (carry_max - carry_min))
@@ -182,8 +192,10 @@ def process_sample(sample_name):
     throw_params = content[l+6].split(" ")
     throw_min = int(np.where(sample_ids == int(throw_params[1].lstrip()))[0])
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
-    normed_sample_throw = scaler.transform(sample_data[throw_min: throw_max, :])
-    throw_sample = skeleton_reshape(normed_sample_throw)
+    throw_sample = sample_data[throw_min: throw_max, :]
+    if USE_SCALER:
+        throw_sample = scaler.transform(throw_sample)
+    throw_sample = skeleton_reshape(throw_sample)
     data_set.append(throw_sample)
     labels.append(5)
     # print("Throw Sequence Length = %d Frames" % (throw_max - throw_min))
@@ -192,8 +204,10 @@ def process_sample(sample_name):
     push_params = content[l+7].split(" ")
     push_min = int(np.where(sample_ids == int(push_params[1].lstrip()))[0])
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
-    normed_sample_push = scaler.transform(sample_data[push_min: push_max, :])
-    push_sample = skeleton_reshape(normed_sample_push)
+    push_sample = sample_data[push_min: push_max, :]
+    if USE_SCALER:
+        push_sample = scaler.transform(push_sample)
+    push_sample = skeleton_reshape(push_sample)
     data_set.append(push_sample)
     labels.append(6)
     # print("Push Sequence Length = %d Frames" % (push_max - push_min))
@@ -202,8 +216,10 @@ def process_sample(sample_name):
     pull_params = content[l+8].split(" ")
     pull_min = int(np.where(sample_ids == int(pull_params[1].lstrip()))[0])
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
-    normed_sample_pull = scaler.transform(sample_data[pull_min: pull_max, :])
-    pull_sample = skeleton_reshape(normed_sample_pull)
+    pull_sample = sample_data[pull_min: pull_max, :]
+    if USE_SCALER:
+        pull_sample = scaler.transform(pull_sample)
+    pull_sample = skeleton_reshape(pull_sample)
     data_set.append(pull_sample)
     labels.append(7)
     # print("Pull Sequence Length = %d Frames" % (pull_max-pull_min))
@@ -212,8 +228,10 @@ def process_sample(sample_name):
     wavehands_params = content[l+9].split(" ")
     wavehands_min = int(np.where(sample_ids == int(wavehands_params[1].lstrip()))[0])
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
-    normed_sample_wavehands = scaler.transform(sample_data[wavehands_min: wavehands_max, :])
-    wavehands_sample = skeleton_reshape(normed_sample_wavehands)
+    wavehands_sample = sample_data[wavehands_min: wavehands_max, :]
+    if USE_SCALER:
+        wavehands_sample = scaler.transform(wavehands_sample)
+    wavehands_sample = skeleton_reshape(wavehands_sample)
     data_set.append(wavehands_sample)
     labels.append(8)
     # print("WaveHands Sequence Length = %d Frames" % (wavehands_max - wavehands_min))
@@ -222,8 +240,10 @@ def process_sample(sample_name):
     claphands_params = content[l+10].split(" ")
     claphands_min = int(np.where(sample_ids == int(claphands_params[1].lstrip()))[0])
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
-    normed_sample_claphands = scaler.transform(sample_data[claphands_min: claphands_max, :])
-    claphands_sample = skeleton_reshape(normed_sample_claphands)
+    claphands_sample = sample_data[claphands_min: claphands_max, :]
+    if USE_SCALER:
+        claphands_sample = scaler.transform(claphands_sample)
+    claphands_sample = skeleton_reshape(claphands_sample)
     data_set.append(claphands_sample)
     labels.append(9)
     # print("ClapHands Sequence Length = %d Frames" % (claphands_max - claphands_min))
@@ -812,9 +832,10 @@ UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
 # UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
+USE_SCALER = False
 
 iterations = 1
-num_epochs = 1  # fix the .fit method as well
+num_epochs = 100
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
     'none',
@@ -826,9 +847,9 @@ augmentations = [
 ]
 # MODELS: CNN, LSTM, ConvRNN
 train_models = [
-    'CNN',
+    # 'CNN',
     # 'LSTM',
-    # 'ConvRNN'
+    'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -870,11 +891,12 @@ for model in train_models:
                 print("- - - - - - - - - - - -")
                 print(train_files)
 
-                print("Sipping through the data fitting the scaler")
-                for l in range(0, 220, 11):
-                    # print("Parsing start line: %d " % l)
-                    filename = DIRECTORY + "joints_" + content[l].strip('\n').lstrip() + ".txt"
-                    partial_fit_data_to_scaler(filename)
+                if USE_SCALER:
+                    print("Sipping through the data fitting the scaler")
+                    for l in range(0, 220, 11):
+                        # print("Parsing start line: %d " % l)
+                        filename = DIRECTORY + "joints_" + content[l].strip('\n').lstrip() + ".txt"
+                        partial_fit_data_to_scaler(filename)
 
                 for l in range(0, 220, 11):
                     # print("Parsing start line: %d " % l)
