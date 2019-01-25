@@ -46,6 +46,10 @@ def skeleton_reshape(frame_):
     return new_frame
 
 
+def sliding_window_generator(sample):
+
+    print("Hui!")
+
 def partial_fit_data_to_scaler(sample_name):
     sample_ = np.loadtxt(sample_name)
     sample_data = sample_[:, 1:]
@@ -55,25 +59,29 @@ def partial_fit_data_to_scaler(sample_name):
     walk_params = content[l+1].split(" ")
     walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[walk_min: walk_max, :])
+    scalerStd.partial_fit(sample_data[walk_min: walk_max, :])
+    scalerMinMax.partial_fit(sample_data[walk_min: walk_max, :])
 
     # Load ID range for action SitDown [1]
     sitdown_params = content[l+2].split(" ")
     sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[sitdown_min: sitdown_max, :])
+    scalerStd.partial_fit(sample_data[sitdown_min: sitdown_max, :])
+    scalerMinMax.partial_fit(sample_data[sitdown_min: sitdown_max, :])
 
     # Load ID range for action StandUp [2]
     standup_params = content[l+3].split(" ")
     standup_min = int(np.where(sample_ids == int(standup_params[1].lstrip()))[0])
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[standup_min: standup_max, :])
+    scalerStd.partial_fit(sample_data[standup_min: standup_max, :])
+    scalerMinMax.partial_fit(sample_data[standup_min: standup_max, :])
 
     # Load ID range for action PickUp [3]
     pickup_params = content[l+4].split(" ")
     pickup_min = int(np.where(sample_ids == int(pickup_params[1].lstrip()))[0])
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[pickup_min: pickup_max, :])
+    scalerStd.partial_fit(sample_data[pickup_min: pickup_max, :])
+    scalerMinMax.partial_fit(sample_data[pickup_min: pickup_max, :])
 
     # Load ID range for action Carry [4]
     carry_params = content[l+5].split(" ")
@@ -82,37 +90,43 @@ def partial_fit_data_to_scaler(sample_name):
     else:
         carry_min = int(np.where(sample_ids == int(carry_params[1].lstrip()))[0])
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
-        scaler.partial_fit(sample_data[carry_min: carry_max, :])
+        scalerStd.partial_fit(sample_data[carry_min: carry_max, :])
+        scalerMinMax.partial_fit(sample_data[carry_min: carry_max, :])
 
     # Load ID range for action Throw [5]
     throw_params = content[l+6].split(" ")
     throw_min = int(np.where(sample_ids == int(throw_params[1].lstrip()))[0])
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[throw_min: throw_max, :])
+    scalerStd.partial_fit(sample_data[throw_min: throw_max, :])
+    scalerMinMax.partial_fit(sample_data[throw_min: throw_max, :])
 
     # Load ID range for action Push [6]
     push_params = content[l+7].split(" ")
     push_min = int(np.where(sample_ids == int(push_params[1].lstrip()))[0])
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[push_min: push_max, :])
+    scalerStd.partial_fit(sample_data[push_min: push_max, :])
+    scalerMinMax.partial_fit(sample_data[push_min: push_max, :])
 
     # Load ID range for action Pull [7]
     pull_params = content[l+8].split(" ")
     pull_min = int(np.where(sample_ids == int(pull_params[1].lstrip()))[0])
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[pull_min: pull_max, :])
+    scalerStd.partial_fit(sample_data[pull_min: pull_max, :])
+    scalerMinMax.partial_fit(sample_data[pull_min: pull_max, :])
 
     # Load ID range for action WaveHands [8]
     wavehands_params = content[l+9].split(" ")
     wavehands_min = int(np.where(sample_ids == int(wavehands_params[1].lstrip()))[0])
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[wavehands_min: wavehands_max, :])
+    scalerStd.partial_fit(sample_data[wavehands_min: wavehands_max, :])
+    scalerMinMax.partial_fit(sample_data[wavehands_min: wavehands_max, :])
 
     # Load ID range for action ClapHands [9]
     claphands_params = content[l+10].split(" ")
     claphands_min = int(np.where(sample_ids == int(claphands_params[1].lstrip()))[0])
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
-    scaler.partial_fit(sample_data[claphands_min: claphands_max, :])
+    scalerStd.partial_fit(sample_data[claphands_min: claphands_max, :])
+    scalerMinMax.partial_fit(sample_data[claphands_min: claphands_max, :])
 
 
 def process_sample(sample_name):
@@ -129,7 +143,9 @@ def process_sample(sample_name):
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
     walk_sample = sample_data[walk_min: walk_max, :]
     if USE_SCALER:
-        walk_sample = scaler.transform(walk_sample)
+        print(scalerMinMax)
+        walk_sample = scalerStd.transform(walk_sample)
+        walk_sample = scalerMinMax.transform(walk_sample)
     walk_sample = skeleton_reshape(walk_sample)
     data_set.append(walk_sample)
     labels.append(0)
@@ -141,7 +157,8 @@ def process_sample(sample_name):
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
     sitdown_sample = sample_data[sitdown_min: sitdown_max, :]
     if USE_SCALER:
-        sitdown_sample = scaler.transform(sitdown_sample)
+        sitdown_sample = scalerStd.transform(sitdown_sample)
+        sitdown_sample = scalerMinMax.transform(sitdown_sample)
     sitdown_sample = skeleton_reshape(sitdown_sample)
     data_set.append(sitdown_sample)
     labels.append(1)
@@ -153,7 +170,8 @@ def process_sample(sample_name):
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
     standup_sample = sample_data[standup_min: standup_max, :]
     if USE_SCALER:
-        standup_sample = scaler.transform(standup_sample)
+        standup_sample = scalerStd.transform(standup_sample)
+        standup_sample = scalerMinMax.transform(standup_sample)
     standup_sample = skeleton_reshape(standup_sample)
     data_set.append(standup_sample)
     labels.append(2)
@@ -165,7 +183,8 @@ def process_sample(sample_name):
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
     pickup_sample = sample_data[pickup_min: pickup_max, :]
     if USE_SCALER:
-        pickup_sample = scaler.transform(pickup_sample)
+        pickup_sample = scalerStd.transform(pickup_sample)
+        pickup_sample = scalerMinMax.transform(pickup_sample)
     pickup_sample = skeleton_reshape(pickup_sample)
     data_set.append(pickup_sample)
     labels.append(3)
@@ -182,7 +201,8 @@ def process_sample(sample_name):
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
         carry_sample = sample_data[carry_min: carry_max, :]
         if USE_SCALER:
-            carry_sample = scaler.transform(carry_sample)
+            carry_sample = scalerStd.transform(carry_sample)
+            carry_sample = scalerMinMax.transform(carry_sample)
         carry_sample = skeleton_reshape(carry_sample)
         data_set.append(carry_sample)
         labels.append(4)
@@ -194,7 +214,8 @@ def process_sample(sample_name):
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
     throw_sample = sample_data[throw_min: throw_max, :]
     if USE_SCALER:
-        throw_sample = scaler.transform(throw_sample)
+        throw_sample = scalerStd.transform(throw_sample)
+        throw_sample = scalerMinMax.transform(throw_sample)
     throw_sample = skeleton_reshape(throw_sample)
     data_set.append(throw_sample)
     labels.append(5)
@@ -206,7 +227,8 @@ def process_sample(sample_name):
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
     push_sample = sample_data[push_min: push_max, :]
     if USE_SCALER:
-        push_sample = scaler.transform(push_sample)
+        push_sample = scalerStd.transform(push_sample)
+        push_sample = scalerMinMax.transform(push_sample)
     push_sample = skeleton_reshape(push_sample)
     data_set.append(push_sample)
     labels.append(6)
@@ -218,7 +240,8 @@ def process_sample(sample_name):
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
     pull_sample = sample_data[pull_min: pull_max, :]
     if USE_SCALER:
-        pull_sample = scaler.transform(pull_sample)
+        pull_sample = scalerStd.transform(pull_sample)
+        pull_sample = scalerMinMax.transform(pull_sample)
     pull_sample = skeleton_reshape(pull_sample)
     data_set.append(pull_sample)
     labels.append(7)
@@ -230,7 +253,8 @@ def process_sample(sample_name):
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
     wavehands_sample = sample_data[wavehands_min: wavehands_max, :]
     if USE_SCALER:
-        wavehands_sample = scaler.transform(wavehands_sample)
+        wavehands_sample = scalerStd.transform(wavehands_sample)
+        wavehands_sample = scalerMinMax.transform(wavehands_sample)
     wavehands_sample = skeleton_reshape(wavehands_sample)
     data_set.append(wavehands_sample)
     labels.append(8)
@@ -242,7 +266,8 @@ def process_sample(sample_name):
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
     claphands_sample = sample_data[claphands_min: claphands_max, :]
     if USE_SCALER:
-        claphands_sample = scaler.transform(claphands_sample)
+        claphands_sample = scalerStd.transform(claphands_sample)
+        claphands_sample = scalerMinMax.transform(claphands_sample)
     claphands_sample = skeleton_reshape(claphands_sample)
     data_set.append(claphands_sample)
     labels.append(9)
@@ -826,13 +851,14 @@ LINE_STEP = 11
 NUM_CLASSES = 10
 MAX_WIDTH = 120
 # EDITABLE PARAMETERS
-DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
-USE_SCALER = False
+USE_SCALER = True
+USE_SLIDINGWINDOW = False
 
 iterations = 1
 num_epochs = 100
@@ -855,7 +881,8 @@ train_models = [
 
 le = LabelEncoder()
 ohe = OneHotEncoder(sparse=False)
-scaler = StandardScaler()
+scalerStd = StandardScaler()
+scalerMinMax = MinMaxScaler(feature_range=(-1, 1))
 
 actionLabels = open(UTKLABELSFILE, "r")
 content = actionLabels.readlines()
