@@ -25,27 +25,32 @@ from sklearn.metrics import confusion_matrix
 # Values are corrected to authors best knowledge
 
 
-def skeleton_reshape(frame_):
-    num_joints = 20
-    avg_length = 20
+def extend_sequences(sequence_, avg_length=30):
+    sequence_length = sequence_.shape[0]
     ext_factors = [0, 0.25, 0.5, 0.75]
     ext_step = len(ext_factors)
-    new_frame = np.zeros([num_joints, MAX_WIDTH, 3])
-    frame_length = frame_.shape[0]
-    if frame_length < avg_length:
-        for frame_id in range(int(frame_length-1)):
-            for joint in range(num_joints):
-                frm_current = frame_[frame_id, joint:joint + 3]
-                frm_next = frame_[int(frame_id + 1), joint: joint + 3]
-                frm_step = np.subtract(frm_next, frm_current)
-                for eid in range(ext_step):
-                    new_frame[joint, int(frame_id * ext_step + eid), :] = \
-                        np.add(frm_current, np.multiply(frm_step, ext_factors[eid]))
+    new_sequence_ = np.zeros([(sequence_length-1) * ext_step + 1, sequence_.shape[1]])
+    if sequence_length < avg_length:
+        for frame_id in range(int(sequence_length-1)):
+            frm_current = sequence_[frame_id, :]
+            frm_next = sequence_[int(frame_id + 1), :]
+            frm_step = np.subtract(frm_next, frm_current)
+            for ext_id in range(ext_step):
+                new_sequence_[int(frame_id * ext_step + ext_id), :] = \
+                    np.add(frm_current, np.multiply(frm_step, ext_factors[ext_id]))
+        return new_sequence_
     else:
-        for frame_id in range(frame_length):
-            for joint in range(num_joints):
-                new_frame[joint, frame_id, :] = frame_[frame_id, joint: joint + 3]
-    return new_frame
+        return sequence_
+
+
+def skeleton_reshape(sequence_):
+    num_joints = 20
+    new_sequence = np.zeros([num_joints, MAX_WIDTH, 3])
+    sequence_length = sequence_.shape[0]
+    for frame_id in range(sequence_length):
+        for joint in range(num_joints):
+            new_sequence[joint, frame_id, :] = sequence_[frame_id, joint: joint + 3]
+    return new_sequence
 
 
 def sliding_window_generator(sample):
@@ -131,13 +136,9 @@ def partial_fit_data_to_scaler(sample_name):
 
 
 def process_sample(sample_name):
-    data_set = []
-    labels = []
-
     sample_ = np.loadtxt(sample_name)
     sample_data = sample_[:, 1:]
     sample_ids = np.array(sample_[:, 0]).astype(int).reshape([-1, 1])
-
     actions_map = {
         "walk": 0,
         "sitdown": 1,
@@ -150,67 +151,77 @@ def process_sample(sample_name):
         "wavehands": 8,
         "claphands": 9
     }
+    data_set = []
+    labels = []
 
     walk_params = content[line + 1].split(" ")
     walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
     walk_sample = sample_data[walk_min: walk_max, :]
+    if EXTEND_ACTIONS:
+        walk_sample = extend_sequences(walk_sample)
     if USE_SCALER:
         print(scalerMinMax)
         walk_sample = scalerStd.transform(walk_sample)
         walk_sample = scalerMinMax.transform(walk_sample)
+
+    data_set.append(skeleton_reshape(walk_sample))
+    labels.append(actions_map.get("walk"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(walk_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("walk"))
-    else:
-        data_set.append(skeleton_reshape(walk_sample))
-        labels.append(actions_map.get("walk"))
 
     sitdown_params = content[line + 2].split(" ")
     sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
     sitdown_sample = sample_data[sitdown_min: sitdown_max, :]
+    if EXTEND_ACTIONS:
+        sitdown_sample = extend_sequences(sitdown_sample)
     if USE_SCALER:
         sitdown_sample = scalerStd.transform(sitdown_sample)
         sitdown_sample = scalerMinMax.transform(sitdown_sample)
+
+    data_set.append(skeleton_reshape(sitdown_sample))
+    labels.append(actions_map.get("sitdown"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(sitdown_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("sitdown"))
-    else:
-        data_set.append(skeleton_reshape(sitdown_sample))
-        labels.append(actions_map.get("sitdown"))
 
     standup_params = content[line + 3].split(" ")
     standup_min = int(np.where(sample_ids == int(standup_params[1].lstrip()))[0])
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
     standup_sample = sample_data[standup_min: standup_max, :]
+    if EXTEND_ACTIONS:
+        standup_sample = extend_sequences(standup_sample)
     if USE_SCALER:
         standup_sample = scalerStd.transform(standup_sample)
         standup_sample = scalerMinMax.transform(standup_sample)
+
+    data_set.append(skeleton_reshape(standup_sample))
+    labels.append(actions_map.get("standup"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(standup_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("standup"))
-    else:
-        data_set.append(skeleton_reshape(standup_sample))
-        labels.append(actions_map.get("standup"))
 
     pickup_params = content[line + 4].split(" ")
     pickup_min = int(np.where(sample_ids == int(pickup_params[1].lstrip()))[0])
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
     pickup_sample = sample_data[pickup_min: pickup_max, :]
+    if EXTEND_ACTIONS:
+        pickup_sample = extend_sequences(pickup_sample)
     if USE_SCALER:
         pickup_sample = scalerStd.transform(pickup_sample)
         pickup_sample = scalerMinMax.transform(pickup_sample)
+
+    data_set.append(skeleton_reshape(pickup_sample))
+    labels.append(actions_map.get("pickup"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(pickup_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("pickup"))
-    else:
-        data_set.append(skeleton_reshape(pickup_sample))
-        labels.append(actions_map.get("pickup"))
 
     carry_params = content[line + 5].split(" ")
     if 'NaN' in carry_params:
@@ -221,91 +232,103 @@ def process_sample(sample_name):
         carry_min = int(np.where(sample_ids == int(carry_params[1].lstrip()))[0])
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
         carry_sample = sample_data[carry_min: carry_max, :]
+        if EXTEND_ACTIONS:
+            carry_sample = extend_sequences(carry_sample)
         if USE_SCALER:
             carry_sample = scalerStd.transform(carry_sample)
             carry_sample = scalerMinMax.transform(carry_sample)
+
+        data_set.append(skeleton_reshape(carry_sample))
+        labels.append(actions_map.get("carry"))
         if USE_SLIDINGWINDOW:
             for windowed_sample in sliding_window_generator(carry_sample):
                 data_set.append(skeleton_reshape(windowed_sample))
                 labels.append(actions_map.get("carry"))
-        else:
-            data_set.append(skeleton_reshape(carry_sample))
-            labels.append(actions_map.get("carry"))
 
     throw_params = content[line + 6].split(" ")
     throw_min = int(np.where(sample_ids == int(throw_params[1].lstrip()))[0])
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
     throw_sample = sample_data[throw_min: throw_max, :]
+    if EXTEND_ACTIONS:
+        throw_sample = extend_sequences(throw_sample)
     if USE_SCALER:
         throw_sample = scalerStd.transform(throw_sample)
         throw_sample = scalerMinMax.transform(throw_sample)
+
+    data_set.append(skeleton_reshape(throw_sample))
+    labels.append(actions_map.get("throw"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(throw_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("throw"))
-    else:
-        data_set.append(skeleton_reshape(throw_sample))
-        labels.append(actions_map.get("throw"))
 
     push_params = content[line + 7].split(" ")
     push_min = int(np.where(sample_ids == int(push_params[1].lstrip()))[0])
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
     push_sample = sample_data[push_min: push_max, :]
+    if EXTEND_ACTIONS:
+        push_sample = extend_sequences(push_sample)
     if USE_SCALER:
         push_sample = scalerStd.transform(push_sample)
         push_sample = scalerMinMax.transform(push_sample)
+
+    data_set.append(skeleton_reshape(push_sample))
+    labels.append(actions_map.get("push"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(push_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("push"))
-    else:
-        data_set.append(skeleton_reshape(push_sample))
-        labels.append(actions_map.get("push"))
 
     pull_params = content[line + 8].split(" ")
     pull_min = int(np.where(sample_ids == int(pull_params[1].lstrip()))[0])
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
     pull_sample = sample_data[pull_min: pull_max, :]
+    if EXTEND_ACTIONS:
+        pull_sample = extend_sequences(pull_sample)
     if USE_SCALER:
         pull_sample = scalerStd.transform(pull_sample)
         pull_sample = scalerMinMax.transform(pull_sample)
+
+    data_set.append(skeleton_reshape(pull_sample))
+    labels.append(actions_map.get("pull"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(pull_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("pull"))
-    else:
-        data_set.append(skeleton_reshape(pull_sample))
-        labels.append(actions_map.get("pull"))
 
     wavehands_params = content[line + 9].split(" ")
     wavehands_min = int(np.where(sample_ids == int(wavehands_params[1].lstrip()))[0])
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
     wavehands_sample = sample_data[wavehands_min: wavehands_max, :]
+    if EXTEND_ACTIONS:
+        wavehands_sample = extend_sequences(wavehands_sample)
     if USE_SCALER:
         wavehands_sample = scalerStd.transform(wavehands_sample)
         wavehands_sample = scalerMinMax.transform(wavehands_sample)
+
+    data_set.append(skeleton_reshape(wavehands_sample))
+    labels.append(actions_map.get("wavehands"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(wavehands_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("wavehands"))
-    else:
-        data_set.append(skeleton_reshape(wavehands_sample))
-        labels.append(actions_map.get("wavehands"))
 
     claphands_params = content[line + 10].split(" ")
     claphands_min = int(np.where(sample_ids == int(claphands_params[1].lstrip()))[0])
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
     claphands_sample = sample_data[claphands_min: claphands_max, :]
+    if EXTEND_ACTIONS:
+        claphands_sample = extend_sequences(claphands_sample)
     if USE_SCALER:
         claphands_sample = scalerStd.transform(claphands_sample)
         claphands_sample = scalerMinMax.transform(claphands_sample)
+
+    data_set.append(skeleton_reshape(claphands_sample))
+    labels.append(actions_map.get("claphands"))
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(claphands_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("claphands"))
-    else:
-        data_set.append(skeleton_reshape(claphands_sample))
-        labels.append(actions_map.get("claphands"))
 
     return np.asarray(data_set), np.asarray(labels).reshape([-1, 1])
 
@@ -884,14 +907,15 @@ LINE_STEP = 11
 NUM_CLASSES = 10
 MAX_WIDTH = 120
 # EDITABLE PARAMETERS
-DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 USE_SCALER = False
 USE_SLIDINGWINDOW = True
+EXTEND_ACTIONS = True
 
 iterations = 1
 num_epochs = 100
