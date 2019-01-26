@@ -54,15 +54,11 @@ def skeleton_reshape(sequence_):
 
 
 def sliding_window_generator(sample):
-    window_size = math.floor(0.7 * sample.shape[0])
-    # print("Sample length: %d" % sample.shape[0])
-    # print("Windows size: %d" % window_size)
+    window_size = math.floor(COEFF_SLIDINGWINDOW * sample.shape[0])
     slided_window_samples = []
-
     for frame in range(sample.shape[0] - window_size + 1):
         window = sample[frame: frame+window_size, :]
         slided_window_samples.append(window)
-    # print("Generated windowed samples: %d" % len(slided_window_samples))
     return slided_window_samples
 
 
@@ -907,26 +903,28 @@ LINE_STEP = 11
 NUM_CLASSES = 10
 MAX_WIDTH = 120
 # EDITABLE PARAMETERS
-# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
+EXTEND_ACTIONS = True
 USE_SCALER = False
 USE_SLIDINGWINDOW = True
-EXTEND_ACTIONS = True
+COEFF_SLIDINGWINDOW = 0.8
 
 iterations = 1
 num_epochs = 100
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
     'none',
+    "scale_shift",
     # 'shift',
     # 'scale',
     # 'noise',
     # 'subsample',
-    'interpol'
+    # 'interpol'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 train_models = [
