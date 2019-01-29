@@ -67,7 +67,7 @@ class DataGenerator(keras.utils.Sequence):
         #print(shift_vec)
         shift = matlib.repmat(shift_vec, max_width, 1)
         #print(shift.shape)
-        return  odata + shift
+        return odata + shift
 
     def noise_augmentation(self, odata):
         max_width = self.dim[1]
@@ -85,11 +85,8 @@ class DataGenerator(keras.utils.Sequence):
             noise_joints.append(id_j)
             joints_range.remove(id_j)
         # print(noise_joints)
-        # for f in range(0, num_frames, 1):
         for seq in range(num_seqncs):
-            # for j in range(0, num_joints, 1):
             for jnt in range(num_joints):
-                #print(" %d %d " % (f,n))
                 if jnt in noise_joints:
                     noise_factors = np.ones([max_width, 3])
                     noise_factors[:, 0] = noise_factors[:, 0] * random.gauss(mu=0, sigma=self.sigma)  # Nunez
@@ -100,6 +97,7 @@ class DataGenerator(keras.utils.Sequence):
                     # print(noise_factors)
                 else:
                     data_aug[seq, jnt, :, :] = odata[seq, jnt, :, :]
+        return data_aug
 
     def subsample_augmentation(self, odata):
         #print("Doing data subsample augmentation.")
@@ -149,8 +147,9 @@ class DataGenerator(keras.utils.Sequence):
             return self.scale_augmentation(odata)
         elif augtype == 'shift':
             return self.shift_augmentation(odata)
-        elif augtype == 'noise':
-            return self.noise_augmentation(odata)
+        # elif augtype == 'noise':
+        # NEW STYLE [Frm][Jnt][Co]
+        #     return self.noise_augmentation(odata)
         elif augtype == 'subsample':
             return self.subsample_augmentation(odata)
         elif augtype == 'interpol':
