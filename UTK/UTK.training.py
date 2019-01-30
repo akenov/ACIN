@@ -25,7 +25,7 @@ from sklearn.metrics import confusion_matrix
 # Values are corrected to authors best knowledge
 
 
-def extend_sequences(sequence_, avg_length=30):
+def extend_sequences(sequence_, seqtype_, avg_length=10):
     sequence_length = sequence_.shape[0]
     ext_factors = [0, 0.25, 0.5, 0.75]
     ext_step = len(ext_factors)
@@ -38,6 +38,7 @@ def extend_sequences(sequence_, avg_length=30):
             for ext_id in range(ext_step):
                 new_sequence_[int(frame_id * ext_step + ext_id), :] = \
                     np.add(frm_current, np.multiply(frm_step, ext_factors[ext_id]))
+        print(seqtype_ + " sequence extended from " + str(sequence_length) + " to " + str(new_sequence_.shape[0]) + " frames")
         return new_sequence_
     else:
         return sequence_
@@ -158,7 +159,7 @@ def process_sample(sample_name):
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
     walk_sample = sample_data[walk_min: walk_max, :]
     if EXTEND_ACTIONS:
-        walk_sample = extend_sequences(walk_sample)
+        walk_sample = extend_sequences(walk_sample, "walk")
     if USE_SCALER:
         print(scalerMinMax)
         walk_sample = scalerStd.transform(walk_sample)
@@ -176,7 +177,7 @@ def process_sample(sample_name):
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
     sitdown_sample = sample_data[sitdown_min: sitdown_max, :]
     if EXTEND_ACTIONS:
-        sitdown_sample = extend_sequences(sitdown_sample)
+        sitdown_sample = extend_sequences(sitdown_sample, "sitdown")
     if USE_SCALER:
         sitdown_sample = scalerStd.transform(sitdown_sample)
         sitdown_sample = scalerMinMax.transform(sitdown_sample)
@@ -193,7 +194,7 @@ def process_sample(sample_name):
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
     standup_sample = sample_data[standup_min: standup_max, :]
     if EXTEND_ACTIONS:
-        standup_sample = extend_sequences(standup_sample)
+        standup_sample = extend_sequences(standup_sample, "standup")
     if USE_SCALER:
         standup_sample = scalerStd.transform(standup_sample)
         standup_sample = scalerMinMax.transform(standup_sample)
@@ -210,7 +211,7 @@ def process_sample(sample_name):
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
     pickup_sample = sample_data[pickup_min: pickup_max, :]
     if EXTEND_ACTIONS:
-        pickup_sample = extend_sequences(pickup_sample)
+        pickup_sample = extend_sequences(pickup_sample, "pickup")
     if USE_SCALER:
         pickup_sample = scalerStd.transform(pickup_sample)
         pickup_sample = scalerMinMax.transform(pickup_sample)
@@ -233,7 +234,7 @@ def process_sample(sample_name):
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
         carry_sample = sample_data[carry_min: carry_max, :]
         if EXTEND_ACTIONS:
-            carry_sample = extend_sequences(carry_sample)
+            carry_sample = extend_sequences(carry_sample, "carry")
         if USE_SCALER:
             carry_sample = scalerStd.transform(carry_sample)
             carry_sample = scalerMinMax.transform(carry_sample)
@@ -250,7 +251,7 @@ def process_sample(sample_name):
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
     throw_sample = sample_data[throw_min: throw_max, :]
     if EXTEND_ACTIONS:
-        throw_sample = extend_sequences(throw_sample)
+        throw_sample = extend_sequences(throw_sample, "throw")
     if USE_SCALER:
         throw_sample = scalerStd.transform(throw_sample)
         throw_sample = scalerMinMax.transform(throw_sample)
@@ -267,7 +268,7 @@ def process_sample(sample_name):
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
     push_sample = sample_data[push_min: push_max, :]
     if EXTEND_ACTIONS:
-        push_sample = extend_sequences(push_sample)
+        push_sample = extend_sequences(push_sample, "push")
     if USE_SCALER:
         push_sample = scalerStd.transform(push_sample)
         push_sample = scalerMinMax.transform(push_sample)
@@ -284,7 +285,7 @@ def process_sample(sample_name):
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
     pull_sample = sample_data[pull_min: pull_max, :]
     if EXTEND_ACTIONS:
-        pull_sample = extend_sequences(pull_sample)
+        pull_sample = extend_sequences(pull_sample, "pull")
     if USE_SCALER:
         pull_sample = scalerStd.transform(pull_sample)
         pull_sample = scalerMinMax.transform(pull_sample)
@@ -301,7 +302,7 @@ def process_sample(sample_name):
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
     wavehands_sample = sample_data[wavehands_min: wavehands_max, :]
     if EXTEND_ACTIONS:
-        wavehands_sample = extend_sequences(wavehands_sample)
+        wavehands_sample = extend_sequences(wavehands_sample, "wavehands")
     if USE_SCALER:
         wavehands_sample = scalerStd.transform(wavehands_sample)
         wavehands_sample = scalerMinMax.transform(wavehands_sample)
@@ -318,7 +319,7 @@ def process_sample(sample_name):
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
     claphands_sample = sample_data[claphands_min: claphands_max, :]
     if EXTEND_ACTIONS:
-        claphands_sample = extend_sequences(claphands_sample)
+        claphands_sample = extend_sequences(claphands_sample, "claphands")
     if USE_SCALER:
         claphands_sample = scalerStd.transform(claphands_sample)
         claphands_sample = scalerMinMax.transform(claphands_sample)
@@ -801,19 +802,21 @@ LINE_STEP = 11
 NUM_CLASSES = 10
 MAX_WIDTH = 120
 # EDITABLE PARAMETERS
-# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+# # UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+# DIRECTORY = "C:\\Users\\antonk\\Documents\\DAmodels\\joints\\"
+# UTKLABELSFILE = "C:\\Users\\antonk\\Documents\\DAmodels\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
 USE_SCALER = False
-USE_SLIDINGWINDOW = False
+USE_SLIDINGWINDOW = True
 COEFF_SLIDINGWINDOW = 0.8
 
 iterations = 1
-num_epochs = 1
+num_epochs = 100
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
     'none',
