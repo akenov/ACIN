@@ -25,7 +25,7 @@ from sklearn.metrics import confusion_matrix
 # Values are corrected to authors best knowledge
 
 
-def extend_sequences(sequence_, avg_length=30):
+def extend_sequences(sequence_, avg_length=10):
     sequence_length = sequence_.shape[0]
     ext_factors = [0, 0.25, 0.5, 0.75]
     ext_step = len(ext_factors)
@@ -169,7 +169,7 @@ def process_sample(sample_name):
     # labels[0] = actions_map.get("walk")
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(walk_sample):
-            # data_set.append(skeleton_reshape(windowed_sample))
+            data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("walk"))
             # data_set[0, :, :, :] = skeleton_reshape(walk_sample)
             # labels[0] = actions_map.get("walk")
@@ -805,34 +805,34 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
-# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
 USE_SCALER = False
-USE_SLIDINGWINDOW = False
+USE_SLIDINGWINDOW = True
 COEFF_SLIDINGWINDOW = 0.8
 
 iterations = 1
-num_epochs = 1
+num_epochs = 100
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
-    # 'none',
+    'none',
     # "scale_shift",
-    'scale',
+    # 'scale',
     # 'shift',
     # 'noise',
     # 'subsample',
-    # 'interpol'
+    'interpol'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 train_models = [
-    'CNN',
+    # 'CNN',
     # 'LSTM',
-    # 'ConvRNN'
+    'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -896,11 +896,6 @@ for model in train_models:
                     else:
                         data_test = np.append(data_test, file_data, axis=0)
                         labels_test = np.append(labels_test, file_labels, axis=0)
-
-                # data_train = data_train[1:, :, :, :]
-                # labels_train = labels_train[1:, :]
-                # data_test = data_test[1:, :, :, :]
-                # labels_test = labels_test[1:, :]
 
                 # print(le.fit(np.asarray(labels_train)).classes_)
                 utk_dataset_train = data_train[1:, :, :, :]

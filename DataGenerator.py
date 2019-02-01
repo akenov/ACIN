@@ -105,15 +105,14 @@ class DataGenerator(keras.utils.Sequence):
         #print("Doing data subsample augmentation.")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         num_seqncs = odata.shape[0]
-        num_frames = odata.shape[2]
-        # Alternative go with all possible combination would be for d in (2,3,4) and for m in (2,3)
+        num_frames = odata.shape[1]
+        # Alternative go with all possible combination would be for displmt in (2,3,4) and for step in (2,3)
         # better generate more random epochs? #17.10.2018
         for seq in range(0, num_seqncs, 1):
-            d = random.randint(2, 4)  # random displacement to sequal (2, 3, 4)
-            m = random.randint(2, 3)  # random step to iterate (2, 3)
-            #print("Subsample %d random numbers d = %d, m = %d" % (f,d,m))
-            for frm, p in zip(range(d, num_frames, m), range(0, num_frames, 1)):
-                #print(s, p)
+            displmt = random.randint(2, 4)  # random displacement to sequal (2, 3, 4)
+            step = random.randint(2, 3)  # random step to iterate (2, 3)
+            #print("Subsample %displmt random numbers displmt = %displmt, step = %displmt" % (f,displmt,step))
+            for frm, p in zip(range(displmt, num_frames, step), range(num_frames)):
                 data_aug[seq, :, p, :] = odata[seq, :, frm, :]
         return data_aug
 
@@ -121,25 +120,23 @@ class DataGenerator(keras.utils.Sequence):
         # print("Doing time interpolation data augmentation")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         num_seqncs = odata.shape[0]
-        num_joints = odata.shape[1]
-        num_frames = odata.shape[2]
+        num_frames = odata.shape[1]
+        num_joints = odata.shape[2]
         for seq in range(num_seqncs):
             r = random.randint(20, 80) / 100
             # print("Random scaling factor: %f" % r)
-            for jnt in range(num_joints):
-                for frm in range(num_frames):
-                    # print(" f=%d j=%d s=%d " % (seq, jnt, frm))
-                    # print("Current coordinate values: %s " % odata[seq, jnt, frm, :])
-                    # print("Next  coordinate values: %s " % odata[seq, jnt, int(frm + 1), :])
-                    frm_prev = odata[seq, jnt, frm, :]
-                    frm_next = odata[seq, jnt, int(frm + 1), :]
+            for frm in range(num_frames-1):
+                for jnt in range(num_joints):
+                    # print("Current coordinate values: %s " % odata[seq, frm, jnt, :])
+                    # print("Next  coordinate values: %s " % odata[seq, int(frm + 1), jnt, :])
+                    frm_prev = odata[seq, frm, jnt, :]
+                    frm_next = odata[seq, frm + 1, jnt, :]
                     if (frm_prev == 0.0).all() and (frm_next == 0.0).all():
                         # print("Interpolation break - padding reached")
                         break
                     frm_step = np.subtract(frm_next, frm_prev)
-
-                    data_aug[seq, jnt, int(frm + 1), :] = np.add(frm_prev, np.multiply(frm_step, r))
-                    # print("Interpolated coordinate value: %s " % data_aug[seq, jnt, int(frm + 1), :])
+                    data_aug[seq, frm + 1, jnt, :] = np.add(frm_prev, np.multiply(frm_step, r))
+                    print("Interpolated coordinate value: %s " % data_aug[seq, int(frm + 1), jnt, :])
         return data_aug
 
     def __augment_data(self, augtype, odata):
