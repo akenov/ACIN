@@ -46,32 +46,34 @@ class DataGenerator(keras.utils.Sequence):
         return int(np.floor(len(self.list_idxes) / (self.batch_size * len(self.aug_types))))
 
     def scale_augmentation(self, odata):
-        #print("Doing data scale augmentation.")
-        # fascale = random.gauss(mu=1, sigma=self.sigma)  # Nunez Aug
-        fascale = 1 + (random.randrange(-20, 20, 1) / 100)  # uniform distribution
-        #print("Scale factor: %.2f" % fascale)
-        return np.multiply(odata, fascale)
+        # print("Doing data scale augmentation.")
+        fa_scale = 1 + (random.randrange(-30, 30, 1) / 100)  # uniform distribution
+        # print("Scale factor: %.2f" % fa_scale)
+        data_aug = np.multiply(odata, fa_scale)
+        return data_aug
 
     def shift_augmentation(self, odata):
-        max_width = self.dim[1]
-        #print("Doing data shift augmentation.")
-        shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
-        shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
-        #print("Shift factors (dx,dy) = (%.3f, %.3f)" % (shift_x_fac, shift_y_fac))
-        # Do the shift augmentation
-        shift_vec = np.ones([1, 3])
-        shift_vec[0, 0] = shift_vec[0, 0] * shift_x_fac
-        shift_vec[0, 1] = shift_vec[0, 1] * shift_y_fac
-        shift_vec[0, 2] = shift_vec[0, 2] * 0  # empty clmn
-        #print(shift_vec.shape)
-        #print(shift_vec)
-        shift = matlib.repmat(shift_vec, max_width, 1)
-        #print(shift.shape)
-        return odata + shift
+        # print("Doing data shift augmentation.")
+        data_aug = np.zeros(odata.shape)
+        for seq in range(self.batch_size):
+            sequence = odata[seq, :, :, :]
+            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+            sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)]\
+                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+            shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
+            shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
+            # Do the shift augmentation
+            shift_vec = np.array([[shift_x_fac, shift_y_fac, 0]])#.reshape([1, 3])
+            shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1)\
+                .reshape(sequence_clean.shape)
+            sequence_shifted = sequence_clean + shift
+            data_aug[seq, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
+                                            mode='constant', constant_values=0)
+        return data_aug
 
     def noise_augmentation(self, odata):
         max_width = self.dim[1]
-        #print("Doing data noise augmentation.")
+        # print("Doing data noise augmentation.")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         # Data augmentation: by noise
         num_seqncs = odata.shape[0]
@@ -156,6 +158,10 @@ class DataGenerator(keras.utils.Sequence):
             return self.interpolate_augmentation(odata)
         elif augtype == 'scale_shift':
             scaled = self.scale_augmentation(odata)
+            return self.shift_augmentation(scaled)
+        elif augtype == 'ITP_SCL_SFT':
+            interpolated = self.interpolate_augmentation(odata)
+            scaled = self.scale_augmentation(interpolated)
             return self.shift_augmentation(scaled)
 
     def __data_generation(self, idxes):

@@ -44,15 +44,12 @@ def extend_sequences(sequence_, avg_length=30):
 
 
 def skeleton_reshape(sequence_):
-    num_joints = 20
-    # new_sequence = np.zeros([num_joints, MAX_WIDTH, 3])
-    new_sequence = np.zeros([MAX_WIDTH, num_joints, 3])
+    # new_sequence = np.zeros([NUM_JOINTS, MAX_WIDTH, 3])
+    new_sequence = np.zeros([MAX_WIDTH, NUM_JOINTS, 3])
     sequence_length = sequence_.shape[0]
     for frame_id in range(sequence_length):
-        for joint in range(num_joints):
-            # new_sequence[joint, frame_id, :] = sequence_[frame_id, joint: joint + 3]
-            # Nunez Style
-            new_sequence[frame_id, joint, :] = sequence_[frame_id, joint: joint + 3]
+        for joint in range(NUM_JOINTS):
+            new_sequence[frame_id, joint, :] = sequence_[frame_id, 3*joint: 3*joint + 3]
     return new_sequence
 
 
@@ -152,6 +149,8 @@ def process_sample(sample_name):
     }
     data_set = []
     labels = []
+    # data_set = np.zeros([NUM_CLASSES, MAX_WIDTH, NUM_JOINTS, 3])
+    # labels = np.zeros([NUM_CLASSES, 1])
 
     walk_params = content[line + 1].split(" ")
     walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
@@ -166,10 +165,14 @@ def process_sample(sample_name):
 
     data_set.append(skeleton_reshape(walk_sample))
     labels.append(actions_map.get("walk"))
+    # data_set[0, :, :, :] = skeleton_reshape(walk_sample)
+    # labels[0] = actions_map.get("walk")
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(walk_sample):
-            data_set.append(skeleton_reshape(windowed_sample))
+            # data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("walk"))
+            # data_set[0, :, :, :] = skeleton_reshape(walk_sample)
+            # labels[0] = actions_map.get("walk")
 
     sitdown_params = content[line + 2].split(" ")
     sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
@@ -692,8 +695,8 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     nunez_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     nunez_model.compile(loss=keras.losses.categorical_crossentropy,
-                          optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
-                          metrics=['accuracy'])
+                        optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
+                        metrics=['accuracy'])
 
     nunez_model.summary()
     print(datetime.now())
@@ -800,6 +803,7 @@ NUM_FILES = 20
 LINE_STEP = 11
 NUM_CLASSES = 10
 MAX_WIDTH = 120
+NUM_JOINTS = 20
 # EDITABLE PARAMETERS
 # DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
 # UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
@@ -816,19 +820,19 @@ iterations = 1
 num_epochs = 1
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
-    'none',
+    # 'none',
     # "scale_shift",
+    'scale',
     # 'shift',
-    # 'scale',
     # 'noise',
     # 'subsample',
     # 'interpol'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 train_models = [
-    # 'CNN',
+    'CNN',
     # 'LSTM',
-    'ConvRNN'
+    # 'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -893,18 +897,18 @@ for model in train_models:
                         data_test = np.append(data_test, file_data, axis=0)
                         labels_test = np.append(labels_test, file_labels, axis=0)
 
-                data_train = data_train[1:, :, :, :]
-                labels_train = labels_train[1:, :]
-                data_test = data_test[1:, :, :, :]
-                labels_test = labels_test[1:, :]
+                # data_train = data_train[1:, :, :, :]
+                # labels_train = labels_train[1:, :]
+                # data_test = data_test[1:, :, :, :]
+                # labels_test = labels_test[1:, :]
 
                 # print(le.fit(np.asarray(labels_train)).classes_)
-                utk_dataset_train = np.asarray(data_train)
-                feat_labenc = le.fit_transform(np.asarray(labels_train))
+                utk_dataset_train = data_train[1:, :, :, :]
+                feat_labenc = le.fit_transform(labels_train[1:, :])
                 utk_labels_train = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
 
-                utk_dataset_test = np.asarray(data_test)
-                feat_labenc = le.fit_transform(np.asarray(labels_test))
+                utk_dataset_test = data_test[1:, :, :, :]
+                feat_labenc = le.fit_transform(labels_test[1:, :])
                 utk_labels_test = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
 
                 utk_dataset_train, utk_labels_train = shuffle(utk_dataset_train, utk_labels_train, random_state=42)
