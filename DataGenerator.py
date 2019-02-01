@@ -46,32 +46,34 @@ class DataGenerator(keras.utils.Sequence):
         return int(np.floor(len(self.list_idxes) / (self.batch_size * len(self.aug_types))))
 
     def scale_augmentation(self, odata):
-        #print("Doing data scale augmentation.")
-        # fascale = random.gauss(mu=1, sigma=self.sigma)  # Nunez Aug
-        fascale = 1 + (random.randrange(-20, 20, 1) / 100)  # uniform distribution
-        #print("Scale factor: %.2f" % fascale)
-        return np.multiply(odata, fascale)
+        # print("Doing data scale augmentation.")
+        fa_scale = 1 + (random.randrange(-30, 30, 1) / 100)  # uniform distribution
+        # print("Scale factor: %.2f" % fa_scale)
+        data_aug = np.multiply(odata, fa_scale)
+        return data_aug
 
     def shift_augmentation(self, odata):
-        max_width = self.dim[1]
-        #print("Doing data shift augmentation.")
-        shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
-        shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
-        #print("Shift factors (dx,dy) = (%.3f, %.3f)" % (shift_x_fac, shift_y_fac))
-        # Do the shift augmentation
-        shift_vec = np.ones([1, 3])
-        shift_vec[0, 0] = shift_vec[0, 0] * shift_x_fac
-        shift_vec[0, 1] = shift_vec[0, 1] * shift_y_fac
-        shift_vec[0, 2] = shift_vec[0, 2] * 0  # empty clmn
-        #print(shift_vec.shape)
-        #print(shift_vec)
-        shift = matlib.repmat(shift_vec, max_width, 1)
-        #print(shift.shape)
-        return odata + shift
+        # print("Doing data shift augmentation.")
+        data_aug = np.zeros(odata.shape)
+        for seq in range(self.batch_size):
+            sequence = odata[seq, :, :, :]
+            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+            sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)]\
+                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+            shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
+            shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
+            # Do the shift augmentation
+            shift_vec = np.array([[shift_x_fac, shift_y_fac, 0]])#.reshape([1, 3])
+            shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1)\
+                .reshape(sequence_clean.shape)
+            sequence_shifted = sequence_clean + shift
+            data_aug[seq, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
+                                            mode='constant', constant_values=0)
+        return data_aug
 
     def noise_augmentation(self, odata):
         max_width = self.dim[1]
-        #print("Doing data noise augmentation.")
+        # print("Doing data noise augmentation.")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         # Data augmentation: by noise
         num_seqncs = odata.shape[0]
@@ -103,15 +105,14 @@ class DataGenerator(keras.utils.Sequence):
         #print("Doing data subsample augmentation.")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         num_seqncs = odata.shape[0]
-        num_frames = odata.shape[2]
-        # Alternative go with all possible combination would be for d in (2,3,4) and for m in (2,3)
+        num_frames = odata.shape[1]
+        # Alternative go with all possible combination would be for displmt in (2,3,4) and for step in (2,3)
         # better generate more random epochs? #17.10.2018
         for seq in range(0, num_seqncs, 1):
-            d = random.randint(2, 4)  # random displacement to sequal (2, 3, 4)
-            m = random.randint(2, 3)  # random step to iterate (2, 3)
-            #print("Subsample %d random numbers d = %d, m = %d" % (f,d,m))
-            for frm, p in zip(range(d, num_frames, m), range(0, num_frames, 1)):
-                #print(s, p)
+            displmt = random.randint(2, 4)  # random displacement to sequal (2, 3, 4)
+            step = random.randint(2, 3)  # random step to iterate (2, 3)
+            #print("Subsample %displmt random numbers displmt = %displmt, step = %displmt" % (f,displmt,step))
+            for frm, p in zip(range(displmt, num_frames, step), range(num_frames)):
                 data_aug[seq, :, p, :] = odata[seq, :, frm, :]
         return data_aug
 
@@ -119,25 +120,23 @@ class DataGenerator(keras.utils.Sequence):
         # print("Doing time interpolation data augmentation")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         num_seqncs = odata.shape[0]
-        num_joints = odata.shape[1]
-        num_frames = odata.shape[2]
+        num_frames = odata.shape[1]
+        num_joints = odata.shape[2]
         for seq in range(num_seqncs):
             r = random.randint(20, 80) / 100
             # print("Random scaling factor: %f" % r)
-            for jnt in range(num_joints):
-                for frm in range(num_frames):
-                    # print(" f=%d j=%d s=%d " % (seq, jnt, frm))
-                    # print("Current coordinate values: %s " % odata[seq, jnt, frm, :])
-                    # print("Next  coordinate values: %s " % odata[seq, jnt, int(frm + 1), :])
-                    frm_prev = odata[seq, jnt, frm, :]
-                    frm_next = odata[seq, jnt, int(frm + 1), :]
+            for frm in range(num_frames-1):
+                for jnt in range(num_joints):
+                    # print("Current coordinate values: %s " % odata[seq, frm, jnt, :])
+                    # print("Next  coordinate values: %s " % odata[seq, int(frm + 1), jnt, :])
+                    frm_prev = odata[seq, frm, jnt, :]
+                    frm_next = odata[seq, frm + 1, jnt, :]
                     if (frm_prev == 0.0).all() and (frm_next == 0.0).all():
                         # print("Interpolation break - padding reached")
                         break
                     frm_step = np.subtract(frm_next, frm_prev)
-
-                    data_aug[seq, jnt, int(frm + 1), :] = np.add(frm_prev, np.multiply(frm_step, r))
-                    # print("Interpolated coordinate value: %s " % data_aug[seq, jnt, int(frm + 1), :])
+                    data_aug[seq, frm + 1, jnt, :] = np.add(frm_prev, np.multiply(frm_step, r))
+                    print("Interpolated coordinate value: %s " % data_aug[seq, int(frm + 1), jnt, :])
         return data_aug
 
     def __augment_data(self, augtype, odata):
@@ -156,6 +155,10 @@ class DataGenerator(keras.utils.Sequence):
             return self.interpolate_augmentation(odata)
         elif augtype == 'scale_shift':
             scaled = self.scale_augmentation(odata)
+            return self.shift_augmentation(scaled)
+        elif augtype == 'ITP_SCL_SFT':
+            interpolated = self.interpolate_augmentation(odata)
+            scaled = self.scale_augmentation(interpolated)
             return self.shift_augmentation(scaled)
 
     def __data_generation(self, idxes):
