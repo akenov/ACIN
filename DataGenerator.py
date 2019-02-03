@@ -45,7 +45,8 @@ class DataGenerator(keras.utils.Sequence):
         #print("LEN method called %s " % self.type)
         return int(np.floor(len(self.list_idxes) / (self.batch_size * len(self.aug_types))))
 
-    def scale_augmentation(self, odata):
+    @staticmethod
+    def scale_augmentation(odata):
         # print("Doing data scale augmentation.")
         fa_scale = 1 + (random.randrange(-30, 30, 1) / 100)  # uniform distribution
         # print("Scale factor: %.2f" % fa_scale)
@@ -63,7 +64,7 @@ class DataGenerator(keras.utils.Sequence):
             shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
             shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
             # Do the shift augmentation
-            shift_vec = np.array([[shift_x_fac, shift_y_fac, 0]])#.reshape([1, 3])
+            shift_vec = np.array([[shift_x_fac, shift_y_fac, 0]])
             shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1)\
                 .reshape(sequence_clean.shape)
             sequence_shifted = sequence_clean + shift
@@ -75,14 +76,13 @@ class DataGenerator(keras.utils.Sequence):
         max_width = self.dim[1]
         # print("Doing data noise augmentation.")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
-        # Data augmentation: by noise
         num_seqncs = odata.shape[0]
         # print("num_frames %s " % num_frames)
         num_joints = odata.shape[1]
         joints_total = random.randint(1, 4)  # random num of joints to augment
         joints_range = list(np.arange(0, num_joints, 1))
         noise_joints = []
-        for x in np.arange(0, joints_total, 1):
+        for x in np.arange(joints_total):
             id_j = random.choice(joints_range)
             noise_joints.append(id_j)
             joints_range.remove(id_j)
@@ -94,29 +94,31 @@ class DataGenerator(keras.utils.Sequence):
                     noise_factors[:, 0] = noise_factors[:, 0] * random.gauss(mu=0, sigma=self.sigma)  # Nunez
                     noise_factors[:, 1] = noise_factors[:, 1] * random.gauss(mu=0, sigma=self.sigma)  # Nunez
                     noise_factors[:, 2] = noise_factors[:, 2] * random.gauss(mu=0, sigma=self.sigma)  # Nunez
-                    data_aug[seq, jnt, :, :] = odata[seq, jnt, :, :] + noise_factors
+                    data_aug[seq, :, jnt, :] = odata[seq, :, jnt, :] + noise_factors
                     # print("Noise factors: ")
                     # print(noise_factors)
                 else:
-                    data_aug[seq, jnt, :, :] = odata[seq, jnt, :, :]
+                    data_aug[seq, :, jnt, :] = odata[seq, :, jnt, :]
         return data_aug
 
-    def subsample_augmentation(self, odata):
-        #print("Doing data subsample augmentation.")
+    @staticmethod
+    def subsample_augmentation(odata):
+        # print("Doing data subsample augmentation.")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         num_seqncs = odata.shape[0]
         num_frames = odata.shape[1]
         # Alternative go with all possible combination would be for displmt in (2,3,4) and for step in (2,3)
         # better generate more random epochs? #17.10.2018
-        for seq in range(0, num_seqncs, 1):
+        for seq in range(num_seqncs):
             displmt = random.randint(2, 4)  # random displacement to sequal (2, 3, 4)
             step = random.randint(2, 3)  # random step to iterate (2, 3)
-            #print("Subsample %displmt random numbers displmt = %displmt, step = %displmt" % (f,displmt,step))
-            for frm, p in zip(range(displmt, num_frames, step), range(num_frames)):
-                data_aug[seq, :, p, :] = odata[seq, :, frm, :]
+            # print("Subsample %displmt random numbers displmt = %displmt, step = %displmt" % (f,displmt,step))
+            for frm, frm_new in zip(range(displmt, num_frames, step), range(num_frames)):
+                data_aug[seq, frm_new, :, :] = odata[seq, frm, :, :]
         return data_aug
 
-    def interpolate_augmentation(self, odata):
+    @staticmethod
+    def interpolate_augmentation(odata):
         # print("Doing time interpolation data augmentation")
         data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         num_seqncs = odata.shape[0]
@@ -136,30 +138,37 @@ class DataGenerator(keras.utils.Sequence):
                         break
                     frm_step = np.subtract(frm_next, frm_prev)
                     data_aug[seq, frm + 1, jnt, :] = np.add(frm_prev, np.multiply(frm_step, r))
-                    print("Interpolated coordinate value: %s " % data_aug[seq, int(frm + 1), jnt, :])
+                    # print("Interpolated coordinate value: %s " % data_aug[seq, int(frm + 1), jnt, :])
         return data_aug
 
     def __augment_data(self, augtype, odata):
         if augtype == 'none':
             return odata
         elif augtype == 'scale':
-            return self.scale_augmentation(odata)
+            scaled = self.scale_augmentation(odata)
+            return scaled
         elif augtype == 'shift':
-            return self.shift_augmentation(odata)
-        # elif augtype == 'noise':
-        # NEW STYLE [Frm][Jnt][Co]
-        #     return self.noise_augmentation(odata)
+            shifted = self.shift_augmentation(odata)
+            return shifted
+        elif augtype == 'noise':
+            noised = self.noise_augmentation(odata)
+            return noised
         elif augtype == 'subsample':
-            return self.subsample_augmentation(odata)
+            subsampled = self.subsample_augmentation(odata)
+            return subsampled
         elif augtype == 'interpol':
-            return self.interpolate_augmentation(odata)
+            interpolated = self.interpolate_augmentation(odata)
+            return interpolated
         elif augtype == 'scale_shift':
             scaled = self.scale_augmentation(odata)
-            return self.shift_augmentation(scaled)
+            shifted_scaled = self.shift_augmentation(scaled)
+            return shifted_scaled
         elif augtype == 'ITP_SCL_SFT':
             interpolated = self.interpolate_augmentation(odata)
             scaled = self.scale_augmentation(interpolated)
             return self.shift_augmentation(scaled)
+        else:
+            return odata
 
     def __data_generation(self, idxes):
         # print("Calling data_generation()")
@@ -183,5 +192,6 @@ class DataGenerator(keras.utils.Sequence):
         batch_labels = np.asarray(agmnt_labels).reshape(-1, train_labels.shape[1])
         # Shuffle the whole batch before returning
         batch_data_fin, batch_labels_fin = shuffle(batch_data, batch_labels)
-        # print("dataGen() returns batch_data of %s and batch_labels of %s " % ((batch_data_fin.shape, ), (batch_labels_fin.shape, )))
+        # print("dataGen() returns batch_data of %s and batch_labels of %s " % \
+        # ((batch_data_fin.shape, ), (batch_labels_fin.shape, )))
         return batch_data_fin, batch_labels_fin

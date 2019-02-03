@@ -149,15 +149,13 @@ def process_sample(sample_name):
     }
     data_set = []
     labels = []
-    # data_set = np.zeros([NUM_CLASSES, MAX_WIDTH, NUM_JOINTS, 3])
-    # labels = np.zeros([NUM_CLASSES, 1])
 
     walk_params = content[line + 1].split(" ")
     walk_min = int(np.where(sample_ids == int(walk_params[1].lstrip()))[0])
     walk_max = int(np.where(sample_ids == int(walk_params[2].lstrip()))[0]+1)
     walk_sample = sample_data[walk_min: walk_max, :]
     if EXTEND_ACTIONS:
-        walk_sample = extend_sequences(walk_sample)
+        walk_sample = extend_sequences(walk_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         print(scalerMinMax)
         walk_sample = scalerStd.transform(walk_sample)
@@ -165,21 +163,17 @@ def process_sample(sample_name):
 
     data_set.append(skeleton_reshape(walk_sample))
     labels.append(actions_map.get("walk"))
-    # data_set[0, :, :, :] = skeleton_reshape(walk_sample)
-    # labels[0] = actions_map.get("walk")
     if USE_SLIDINGWINDOW:
         for windowed_sample in sliding_window_generator(walk_sample):
             data_set.append(skeleton_reshape(windowed_sample))
             labels.append(actions_map.get("walk"))
-            # data_set[0, :, :, :] = skeleton_reshape(walk_sample)
-            # labels[0] = actions_map.get("walk")
 
     sitdown_params = content[line + 2].split(" ")
     sitdown_min = int(np.where(sample_ids == int(sitdown_params[1].lstrip()))[0])
     sitdown_max = int(np.where(sample_ids == int(sitdown_params[2].lstrip()))[0]+1)
     sitdown_sample = sample_data[sitdown_min: sitdown_max, :]
     if EXTEND_ACTIONS:
-        sitdown_sample = extend_sequences(sitdown_sample)
+        sitdown_sample = extend_sequences(sitdown_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         sitdown_sample = scalerStd.transform(sitdown_sample)
         sitdown_sample = scalerMinMax.transform(sitdown_sample)
@@ -196,7 +190,7 @@ def process_sample(sample_name):
     standup_max = int(np.where(sample_ids == int(standup_params[2].lstrip()))[0]+1)
     standup_sample = sample_data[standup_min: standup_max, :]
     if EXTEND_ACTIONS:
-        standup_sample = extend_sequences(standup_sample)
+        standup_sample = extend_sequences(standup_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         standup_sample = scalerStd.transform(standup_sample)
         standup_sample = scalerMinMax.transform(standup_sample)
@@ -213,7 +207,7 @@ def process_sample(sample_name):
     pickup_max = int(np.where(sample_ids == int(pickup_params[2].lstrip()))[0]+1)
     pickup_sample = sample_data[pickup_min: pickup_max, :]
     if EXTEND_ACTIONS:
-        pickup_sample = extend_sequences(pickup_sample)
+        pickup_sample = extend_sequences(pickup_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         pickup_sample = scalerStd.transform(pickup_sample)
         pickup_sample = scalerMinMax.transform(pickup_sample)
@@ -236,7 +230,7 @@ def process_sample(sample_name):
         carry_max = int(np.where(sample_ids == int(carry_params[2].lstrip()))[0] + 1)
         carry_sample = sample_data[carry_min: carry_max, :]
         if EXTEND_ACTIONS:
-            carry_sample = extend_sequences(carry_sample)
+            carry_sample = extend_sequences(carry_sample, FRAMES_THRESHOLD)
         if USE_SCALER:
             carry_sample = scalerStd.transform(carry_sample)
             carry_sample = scalerMinMax.transform(carry_sample)
@@ -253,7 +247,7 @@ def process_sample(sample_name):
     throw_max = int(np.where(sample_ids == int(throw_params[2].lstrip()))[0]+1)
     throw_sample = sample_data[throw_min: throw_max, :]
     if EXTEND_ACTIONS:
-        throw_sample = extend_sequences(throw_sample)
+        throw_sample = extend_sequences(throw_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         throw_sample = scalerStd.transform(throw_sample)
         throw_sample = scalerMinMax.transform(throw_sample)
@@ -270,7 +264,7 @@ def process_sample(sample_name):
     push_max = int(np.where(sample_ids == int(push_params[2].lstrip()))[0]+1)
     push_sample = sample_data[push_min: push_max, :]
     if EXTEND_ACTIONS:
-        push_sample = extend_sequences(push_sample)
+        push_sample = extend_sequences(push_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         push_sample = scalerStd.transform(push_sample)
         push_sample = scalerMinMax.transform(push_sample)
@@ -287,7 +281,7 @@ def process_sample(sample_name):
     pull_max = int(np.where(sample_ids == int(pull_params[2].lstrip()))[0]+1)
     pull_sample = sample_data[pull_min: pull_max, :]
     if EXTEND_ACTIONS:
-        pull_sample = extend_sequences(pull_sample)
+        pull_sample = extend_sequences(pull_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         pull_sample = scalerStd.transform(pull_sample)
         pull_sample = scalerMinMax.transform(pull_sample)
@@ -304,7 +298,7 @@ def process_sample(sample_name):
     wavehands_max = int(np.where(sample_ids == int(wavehands_params[2].lstrip()))[0]+1)
     wavehands_sample = sample_data[wavehands_min: wavehands_max, :]
     if EXTEND_ACTIONS:
-        wavehands_sample = extend_sequences(wavehands_sample)
+        wavehands_sample = extend_sequences(wavehands_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         wavehands_sample = scalerStd.transform(wavehands_sample)
         wavehands_sample = scalerMinMax.transform(wavehands_sample)
@@ -321,7 +315,7 @@ def process_sample(sample_name):
     claphands_max = int(np.where(sample_ids == int(claphands_params[2].lstrip()))[0]+1)
     claphands_sample = sample_data[claphands_min: claphands_max, :]
     if EXTEND_ACTIONS:
-        claphands_sample = extend_sequences(claphands_sample)
+        claphands_sample = extend_sequences(claphands_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
         claphands_sample = scalerStd.transform(claphands_sample)
         claphands_sample = scalerMinMax.transform(claphands_sample)
@@ -805,34 +799,36 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
-DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
-USE_SCALER = False
+FRAMES_THRESHOLD = 10
 USE_SLIDINGWINDOW = True
 COEFF_SLIDINGWINDOW = 0.8
+USE_SCALER = False
 
 iterations = 1
-num_epochs = 100
+num_epochs = 1
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
-    'none',
+    # 'none',
     # "scale_shift",
     # 'scale',
     # 'shift',
     # 'noise',
-    # 'subsample',
-    'interpol'
+    'subsample',
+    'interpol',
+    # 'ITP_SCL_SFT'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 train_models = [
-    # 'CNN',
+    'CNN',
     # 'LSTM',
-    'ConvRNN'
+    # 'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -850,6 +846,10 @@ for model in train_models:
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
             print("Batch: " + key)
             print("Augmentations: %s" % augmentations)
+            if EXTEND_ACTIONS:
+                print("Extend Actions #Frames Threshold: %d" % FRAMES_THRESHOLD)
+            if USE_SLIDINGWINDOW:
+                print("Sliding Window Length: %.2f" % COEFF_SLIDINGWINDOW)
 
             train_data_file = DATASET_NAME + ".train." + key + ".data"
             train_labels_file = DATASET_NAME + ".train." + key + ".labels"
@@ -910,10 +910,12 @@ for model in train_models:
                 utk_dataset_test, utk_labels_test = shuffle(utk_dataset_test, utk_labels_test, random_state=42)
 
                 print("Saving data & labels to files: ")
+                print("TRAIN length: %d samples" % utk_dataset_train.shape[0])
                 print("TRAIN data  : %s" % train_data_file)
                 print("TRAIN labels: %s" % train_labels_file)
                 np.save(train_data_file, utk_dataset_train)
                 np.save(train_labels_file, utk_labels_train)
+                print("TEST length: %d samples" % utk_dataset_test.shape[0])
                 print("TEST data  : %s" % test_data_file)
                 print("TEST labels: %s" % test_labels_file)
                 np.save(test_data_file, utk_dataset_test)
