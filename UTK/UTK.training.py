@@ -557,7 +557,6 @@ def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
 
 def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     modelname = DATASET_NAME + ' Nunez LOSO #' + loso_[4:]
-    cnn_batch_size_base = 20
     augmentations_ = aug_list
 
     train_data_file_ = DATASET_NAME + ".train." + loso_ + ".data.npy"
@@ -580,7 +579,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     test_labels_ = np.load(test_labels_file_)
 
     list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
-    batch_size_aug_cnn = len(augmentations) * cnn_batch_size_base
+    batch_size_aug_cnn = len(augmentations) * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     # print("Input Shape = %s " % (ishape, ))
     bi_shape = (batch_size_aug_cnn, test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
@@ -617,7 +616,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print(datetime.now())
     print("Start training")
     history_cnn = conv_model.fit_generator(generator=training_generator_cnn,
-                                           epochs=epochs_n,
+                                           epochs=epochs_n, validation_data=(test_data_, test_labels_),
                                            shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
                                            callbacks=[tensorboard])
 
@@ -642,8 +641,8 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.layers.pop()  # Dense(300)
 
     # RNN part
-    rnn_batch_size_base = 16
-    batch_size_aug_rnn = len(augmentations) * rnn_batch_size_base
+
+    batch_size_aug_rnn = len(augmentations) * RNN_BATCH_SIZE
 
     training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
 
@@ -677,7 +676,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print(datetime.now())
     print("Start training")
     history_rnn = nunez_model.fit_generator(generator=training_generator_rnn,
-                                            epochs=int(epochs_n*5),
+                                            epochs=int(epochs_n*5), validation_data=(test_data_, test_labels_),
                                             shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
                                             callbacks=[tensorboard])
 
@@ -725,6 +724,26 @@ def trim_to_batch(nonbatch_data, nonbatch_labels, batchsize):
     newlength_data = math.floor(nonbatch_data.shape[0] / batchsize) * batchsize
     print("New batch-sized array length: " + str(newlength_data))
     return nonbatch_data[:newlength_data, :], nonbatch_labels[:newlength_data, :]
+
+
+def print_summary():
+    results_len = len(RESULTS)
+    results_arr = np.asarray(RESULTS)
+    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+    print("| EXTEND_ACTIONS: " + str(EXTEND_ACTIONS))
+    print("| USE_SLIDINGWINDOW: " + str(USE_SLIDINGWINDOW))
+    print("| USE_SCALER: " + str(USE_SCALER))
+    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+    print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
+    print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
+    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+    print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
+    print("| COEFF_SLIDINGWINDOW: " + str(COEFF_SLIDINGWINDOW))
+    print("| COEFF_DROPOUT: " + str(COEFF_DROPOUT))
+    print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
+    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+    print("| " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
+    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
 
 sample_names = [
@@ -781,10 +800,10 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
-DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
@@ -794,9 +813,11 @@ FRAMES_THRESHOLD = 10
 COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.5
 COEFF_REGULARIZATION_L2 = 0.015
+CNN_BATCH_SIZE = 100
+RNN_BATCH_SIZE = 16
 
-iterations = 1
-num_epochs = 100
+ITERATIONS = 1
+NUM_EPOCHS = 1
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
     'none',
@@ -827,20 +848,12 @@ content = actionLabels.readlines()
 actionLabels.close()
 
 for model in train_models:
-    for run in np.arange(iterations):
+    for run in np.arange(ITERATIONS):
         RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-            print("| Batch: " + key)
+            print("| File Batch: " + key)
             print("| Augmentations: %s" % augmentations)
-            print("| EXTEND_ACTIONS: " + EXTEND_ACTIONS)
-            print("| USE_SLIDINGWINDOW: " + USE_SLIDINGWINDOW)
-            print("| USE_SCALER: " + USE_SCALER)
-            print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-            print("| FRAMES_THRESHOLD: " + FRAMES_THRESHOLD)
-            print("| COEFF_SLIDINGWINDOW: " + COEFF_SLIDINGWINDOW)
-            print("| COEFF_DROPOUT: " + COEFF_DROPOUT)
-            print("| COEFF_REGULARIZATION_L2: " + COEFF_REGULARIZATION_L2)
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
             if EXTEND_ACTIONS:
@@ -920,17 +933,15 @@ for model in train_models:
 
             print("Training " + model + " model")
             if model == 'CNN':
-                run_keras_cnn_model(key, num_epochs, str(int(run + 1)), augmentations)
+                run_keras_cnn_model(key, NUM_EPOCHS, str(int(run + 1)), augmentations)
             elif model == 'LSTM':
-                run_keras_lstm_model(key, num_epochs, str(int(run + 1)), augmentations)
+                run_keras_lstm_model(key, NUM_EPOCHS, str(int(run + 1)), augmentations)
             elif model == 'ConvRNN':
-                run_keras_nunez_model(key, num_epochs, str(int(run + 1)), augmentations)
+                run_keras_nunez_model(key, NUM_EPOCHS, str(int(run + 1)), augmentations)
             else:
                 print("Model unknown!")
+    print("Finished run #" + str(int(run+1)))
 
-        results_len = len(RESULTS)
-        results_arr = np.asarray(RESULTS)
-        print(model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
-        print("Finished run #" + str(int(run+1)))
+print_summary()
 
 exit(0)
