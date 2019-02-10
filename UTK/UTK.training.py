@@ -8,6 +8,7 @@ import numpy as np
 import itertools
 from datetime import datetime
 from DataGenerator import DataGenerator
+from ChndDataGenerator import ChndDataGenerator
 import keras
 from keras import regularizers
 from keras import backend as K
@@ -579,7 +580,8 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     test_labels_ = np.load(test_labels_file_)
 
     list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
-    batch_size_aug_cnn = len(augmentations) * CNN_BATCH_SIZE
+    # batch_size_aug_cnn = len(AUGMENTATIONS) * CNN_BATCH_SIZE
+    batch_size_aug_cnn = COEFF_BATCH_CHAIN**2 * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     # print("Input Shape = %s " % (ishape, ))
     bi_shape = (batch_size_aug_cnn, test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
@@ -589,15 +591,18 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
                               write_graph=True, write_images=True)
 
     # Generators
-    training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn, ishape, list_idxes, augmentations_)
+    training_generator_cnn = ChndDataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn, ishape,
+                                               list_idxes, augmentations_, COEFF_BATCH_CHAIN)
 
     conv_model = Sequential()
-    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu',  input_shape=ishape,#batch_input_shape=bi_shape,
-                             padding='same'))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
+    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu',  input_shape=ishape, padding='same'))
+    #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
+    conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))
+    #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
+    conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))
+    #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # CNN part
@@ -642,18 +647,22 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
 
     # RNN part
 
-    batch_size_aug_rnn = len(augmentations) * RNN_BATCH_SIZE
+    batch_size_aug_rnn = len(AUGMENTATIONS) * RNN_BATCH_SIZE
 
-    training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
+    # training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
+    training_generator_rnn = ChndDataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape,
+                                               list_idxes, augmentations_, COEFF_BATCH_CHAIN)
 
     nunez_model = Sequential()
-    nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, #batch_input_shape=bi_shape,
-                             padding='same', trainable=False))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=False))
-    nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', trainable=False))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=False))
-    nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', trainable=False))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=False))
+    nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, padding='same',
+                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
+    nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same',
+                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
+    nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same',
+                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
 
     nunez_model.set_weights(conv_model.get_weights())
 
@@ -729,6 +738,8 @@ def trim_to_batch(nonbatch_data, nonbatch_labels, batchsize):
 def print_summary():
     results_len = len(RESULTS)
     results_arr = np.asarray(RESULTS)
+    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+    print("| AUGMENTATIONS: %s" % AUGMENTATIONS)
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| EXTEND_ACTIONS: " + str(EXTEND_ACTIONS))
     print("| USE_SLIDINGWINDOW: " + str(USE_SLIDINGWINDOW))
@@ -813,13 +824,14 @@ FRAMES_THRESHOLD = 10
 COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.5
 COEFF_REGULARIZATION_L2 = 0.015
+COEFF_BATCH_CHAIN = 5
 CNN_BATCH_SIZE = 100
 RNN_BATCH_SIZE = 16
 
 ITERATIONS = 1
 NUM_EPOCHS = 1
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
-augmentations = [
+AUGMENTATIONS = [
     'none',
     "scale_shift",
     # 'scale',
@@ -830,7 +842,7 @@ augmentations = [
     # 'ITP_SCL_SFT'
 ]
 # MODELS: CNN, LSTM, ConvRNN
-train_models = [
+TRAIN_MODELS = [
     # 'CNN',
     # 'LSTM',
     'ConvRNN'
@@ -847,13 +859,13 @@ actionLabels = open(UTKLABELSFILE, "r")
 content = actionLabels.readlines()
 actionLabels.close()
 
-for model in train_models:
+for model in TRAIN_MODELS:
     for run in np.arange(ITERATIONS):
         RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
             print("| File Batch: " + key)
-            print("| Augmentations: %s" % augmentations)
+            print("| Augmentations: %s" % AUGMENTATIONS)
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
             if EXTEND_ACTIONS:
@@ -933,11 +945,11 @@ for model in train_models:
 
             print("Training " + model + " model")
             if model == 'CNN':
-                run_keras_cnn_model(key, NUM_EPOCHS, str(int(run + 1)), augmentations)
+                run_keras_cnn_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
             elif model == 'LSTM':
-                run_keras_lstm_model(key, NUM_EPOCHS, str(int(run + 1)), augmentations)
+                run_keras_lstm_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
             elif model == 'ConvRNN':
-                run_keras_nunez_model(key, NUM_EPOCHS, str(int(run + 1)), augmentations)
+                run_keras_nunez_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
             else:
                 print("Model unknown!")
     print("Finished run #" + str(int(run+1)))
