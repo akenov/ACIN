@@ -151,22 +151,24 @@ class DataGenerator(keras.utils.Sequence):
             shifted = self.shift_augmentation(odata)
             return shifted
         elif augtype == 'noise':
-            noised = self.noise_augmentation(odata)
+            scaled = self.scale_augmentation(odata)
+            shifted_scaled = self.shift_augmentation(scaled)
+            noised = self.noise_augmentation(shifted_scaled)
             return noised
         elif augtype == 'subsample':
-            subsampled = self.subsample_augmentation(odata)
+            scaled = self.scale_augmentation(odata)
+            shifted_scaled = self.shift_augmentation(scaled)
+            subsampled = self.subsample_augmentation(shifted_scaled)
             return subsampled
         elif augtype == 'interpol':
-            interpolated = self.interpolate_augmentation(odata)
+            scaled = self.scale_augmentation(odata)
+            shifted_scaled = self.shift_augmentation(scaled)
+            interpolated = self.interpolate_augmentation(shifted_scaled)
             return interpolated
         elif augtype == 'scale_shift':
             scaled = self.scale_augmentation(odata)
             shifted_scaled = self.shift_augmentation(scaled)
             return shifted_scaled
-        elif augtype == 'ITP_SCL_SFT':
-            interpolated = self.interpolate_augmentation(odata)
-            scaled = self.scale_augmentation(interpolated)
-            return self.shift_augmentation(scaled)
         else:
             return odata
 

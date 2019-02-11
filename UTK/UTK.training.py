@@ -3,12 +3,10 @@ from __future__ import print_function
 import pickle
 import math
 import os
-import time
 import numpy as np
 import itertools
 from datetime import datetime
 from DataGenerator import DataGenerator
-from ChndDataGenerator import ChndDataGenerator
 import keras
 from keras import regularizers
 from keras import backend as K
@@ -591,8 +589,8 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
                               write_graph=True, write_images=True)
 
     # Generators
-    training_generator_cnn = ChndDataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn, ishape,
-                                               list_idxes, augmentations_, COEFF_BATCH_CHAIN)
+    training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn, ishape,
+                                               list_idxes, augmentations_)
 
     conv_model = Sequential()
     conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu',  input_shape=ishape, padding='same'))
@@ -614,7 +612,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     conv_model.compile(loss=keras.losses.categorical_crossentropy,
-                       optimizer=keras.optimizers.Adadelta(),
+                       optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
                        metrics=['accuracy'])
 
     conv_model.summary()
@@ -649,9 +647,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
 
     batch_size_aug_rnn = len(AUGMENTATIONS) * RNN_BATCH_SIZE
 
-    # training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
-    training_generator_rnn = ChndDataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape,
-                                               list_idxes, augmentations_, COEFF_BATCH_CHAIN)
+    training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
 
     nunez_model = Sequential()
     nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, padding='same',
@@ -811,10 +807,10 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
-# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
@@ -829,17 +825,16 @@ CNN_BATCH_SIZE = 100
 RNN_BATCH_SIZE = 16
 
 ITERATIONS = 1
-NUM_EPOCHS = 1
+NUM_EPOCHS = 100
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 AUGMENTATIONS = [
     'none',
     "scale_shift",
     # 'scale',
     # 'shift',
-    # 'noise',
-    # 'subsample',
+    'noise',
+    'subsample',
     'interpol',
-    # 'ITP_SCL_SFT'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 TRAIN_MODELS = [
@@ -860,7 +855,7 @@ content = actionLabels.readlines()
 actionLabels.close()
 
 for model in TRAIN_MODELS:
-    for run in np.arange(ITERATIONS):
+    for run_num in np.arange(ITERATIONS):
         RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
@@ -883,10 +878,8 @@ for model in TRAIN_MODELS:
                 print("Sample TRAIN and TEST data sets files found. Skipping generation from skeleton data.")
             else:
                 data_train = np.zeros([1, MAX_WIDTH, 20, 3])
-                # data_train = np.zeros([1, 20, MAX_WIDTH, 3])
                 labels_train = np.zeros([1, 1])
                 data_test = np.zeros([1, MAX_WIDTH, 20, 3])
-                # data_test = np.zeros([1, 20, MAX_WIDTH, 3])
                 labels_test = np.zeros([1, 1])
 
                 test_files = []
@@ -945,14 +938,14 @@ for model in TRAIN_MODELS:
 
             print("Training " + model + " model")
             if model == 'CNN':
-                run_keras_cnn_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_cnn_model(key, NUM_EPOCHS, str(int(run_num + 1)), AUGMENTATIONS)
             elif model == 'LSTM':
-                run_keras_lstm_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_lstm_model(key, NUM_EPOCHS, str(int(run_num + 1)), AUGMENTATIONS)
             elif model == 'ConvRNN':
-                run_keras_nunez_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_nunez_model(key, NUM_EPOCHS, str(int(run_num + 1)), AUGMENTATIONS)
             else:
                 print("Model unknown!")
-    print("Finished run #" + str(int(run+1)))
+        print("Finished run #" + str(int(run_num + 1)))
 
 print_summary()
 

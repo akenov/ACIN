@@ -46,7 +46,7 @@ class ChndDataGenerator(keras.utils.Sequence):
         """Denotes the number of batches per epoch"""
         #print("LEN method called %s " % self.type)
         # return int(np.floor(len(self.list_idxes) / (self.batch_size * len(self.aug_types))))
-        return int(np.floor(len(self.list_idxes) / (self.batch_size * self.batch_factor**2)))
+        return int(np.floor(len(self.list_idxes) / (self.batch_size ))* self.batch_factor**2)
 
     @staticmethod
     def scale_augmentation(odata):
@@ -227,6 +227,6 @@ class ChndDataGenerator(keras.utils.Sequence):
         batch_labels = np.asarray(agmnt_labels).reshape(-1, train_labels.shape[1])
         # Shuffle the whole batch before returning
         batch_data_fin, batch_labels_fin = shuffle(batch_data, batch_labels)
-        print("dataGen() returns batch_data of %s and batch_labels of %s " % \
-        ((batch_data_fin.shape, ), (batch_labels_fin.shape, )))
+        # print("dataGen() returns batch_data of %s and batch_labels of %s " % \
+        # ((batch_data_fin.shape, ), (batch_labels_fin.shape, )))
         return batch_data_fin, batch_labels_fin
