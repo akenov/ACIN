@@ -581,26 +581,21 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     # batch_size_aug_cnn = len(AUGMENTATIONS) * CNN_BATCH_SIZE
     batch_size_aug_cnn = COEFF_BATCH_CHAIN**2 * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-    # print("Input Shape = %s " % (ishape, ))
-    bi_shape = (batch_size_aug_cnn, test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-    print("Batch Input Shape = %s " % (bi_shape,))
+    print("Input Shape = %s " % (ishape, ))
 
     tensorboard = TensorBoard(log_dir=OUTPUT_SAVES, histogram_freq=0,
                               write_graph=True, write_images=True)
 
     # Generators
-    training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn, ishape,
-                                               list_idxes, augmentations_)
+    training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn,
+                                           ishape, list_idxes, augmentations_)
 
     conv_model = Sequential()
-    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu',  input_shape=ishape, padding='same'))
-    #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
+    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same' , input_shape=ishape))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
     conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))
-    #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
     conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))
-    #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # CNN part
@@ -641,7 +636,9 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.layers.pop()  # Dense(Softmax)
     conv_model.layers.pop()  # Flatten()
     conv_model.layers.pop()  # Dense(100)
+    conv_model.layers.pop()  # Dropout
     conv_model.layers.pop()  # Dense(300)
+    conv_model.layers.pop()  # Dropout
 
     # RNN part
 
@@ -668,7 +665,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     # print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Masking(mask_value=0.0, input_shape=nunez_model.layers[-1].output_shape))
     # nunez_model.add(BatchNormalization(axis=2))
-    nunez_model.add(LSTM(128, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2), stateful=False))
+    nunez_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2), stateful=False))
     nunez_model.add(Dropout(COEFF_DROPOUT))
     # nunez_model.add(Flatten())
     nunez_model.add(Dense(NUM_CLASSES, activation='softmax'))
@@ -832,9 +829,9 @@ AUGMENTATIONS = [
     "scale_shift",
     # 'scale',
     # 'shift',
-    'noise',
-    'subsample',
-    'interpol',
+    # 'noise',
+    # 'subsample',
+    # 'interpol',
 ]
 # MODELS: CNN, LSTM, ConvRNN
 TRAIN_MODELS = [

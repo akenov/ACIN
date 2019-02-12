@@ -47,7 +47,7 @@ def skeleton_reshape(sequence_):
     return new_sequence
 
 
-def get_label(filename):
+def get_label_id(filename):
     if 'gesture_1'+FLD_SLSH in filename:
         # print("Gesture: Grab")
         return 0
@@ -116,8 +116,8 @@ def get_frame_ids(filename_):
         # print(name)
         sub_pos = filename_.find(name)
         subfilename = filename_[sub_pos:]
-        id_start = subfilename.find(NUM_STARTMARK)
-        id_end = subfilename.find(NUM_ENDMARK)
+        id_start = subfilename.find(STARTMARK)
+        id_end = subfilename.find(FLD_SLSH)
         dir_num = subfilename[id_start + 1: id_end]
         idxs_[dir_names.index(name)] = dir_num
     start_frame = int(SEQ_INFO[idxs_[0]-1, idxs_[1]-1, idxs_[2]-1, idxs_[3]-1, 0])
@@ -128,7 +128,7 @@ def get_frame_ids(filename_):
 
 def append_to_set(filename, dataset, labelset, skel_data):
     data_shaped = skeleton_reshape(skel_data)
-    label = get_label(filename)
+    label = LABELS[get_label_id(filename)]
 
     dataset.append(data_shaped)
     labelset.append(label)
@@ -650,23 +650,21 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
     batch_size_aug_cnn = len(augmentations) * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-    # print("Input Shape = %s " % (ishape, ))
-    bi_shape = (batch_size_aug_cnn, test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-    print("Batch Input Shape = %s " % (bi_shape,))
+    print("Input Shape = %s " % (ishape, ))
 
     tensorboard = TensorBoard(log_dir=OUTPUT_SAVES, histogram_freq=0,
                               write_graph=True, write_images=True)
 
     # Generators
-    training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn, ishape, list_idxes, augmentations_)
+    training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn,
+                                           ishape, list_idxes, augmentations_)
 
     conv_model = Sequential()
-    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu',  input_shape=ishape,#batch_input_shape=bi_shape,
-                             padding='same'))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
+    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', input_shape=ishape))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
+    conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
+    conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # CNN part
@@ -707,7 +705,9 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.layers.pop()  # Dense(Softmax)
     conv_model.layers.pop()  # Flatten()
     conv_model.layers.pop()  # Dense(100)
+    conv_model.layers.pop()  # Dropout
     conv_model.layers.pop()  # Dense(300)
+    conv_model.layers.pop()  # Dropout
 
     # RNN part
 
@@ -732,7 +732,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     # print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Masking(mask_value=0.0, input_shape=nunez_model.layers[-1].output_shape))
     # nunez_model.add(BatchNormalization(axis=2))
-    nunez_model.add(LSTM(128, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2), stateful=False))
+    nunez_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2), stateful=False))
     nunez_model.add(Dropout(COEFF_DROPOUT))
     # nunez_model.add(Flatten())
     nunez_model.add(Dense(NUM_CLASSES, activation='softmax'))
@@ -872,7 +872,6 @@ LABELS = [
 ]
 
 DATASET_NAME = 'DHG'
-
 NUM_CLASSES = 14
 MAX_WIDTH = 150
 NUM_JOINTS = 22
@@ -880,11 +879,9 @@ NUM_JOINTS = 22
 # PARAMETERS #
 # FLD_SLSH = '/'  # USE for *NIX
 FLD_SLSH = '\\'  # USE for Windows
-NUM_STARTMARK = "_"
-# NUM_ENDMARK = "/" # CHANGE for *NIX
-NUM_ENDMARK = "\\"  # CHANGE for Windows
-DHGFOLDER = "D:\\!DA-20092018\\DHG2016/"
-# DHGFOLDER = "./DHG2016/"
+STARTMARK = "_"
+# DHGFOLDER = "D:\\!DA-20092018\\DHG2016/"
+DHGFOLDER = "./DHG2016/"
 # DHGFOLDER = "/home/antonk/racer/DHG_dataset/DHG2016/"
 allfiles_list = glob.glob(DHGFOLDER + "/*/finger_1/*/*/skeleton_world.txt")
 print("DHG14 - working only with FINGER 1")
@@ -894,7 +891,7 @@ OUTPUT_SAVES = "/saves/DHG/"
 EXTEND_ACTIONS = True
 USE_SLIDINGWINDOW = True
 USE_SCALER = False
-FRAMES_THRESHOLD = 10
+FRAMES_THRESHOLD = 20
 COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.5
 COEFF_REGULARIZATION_L2 = 0.015
@@ -903,7 +900,7 @@ RNN_BATCH_SIZE = 16
 # K.set_epsilon(1e-06)
 
 iterations = 1
-num_epochs = 1
+num_epochs = 100
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 augmentations = [
     'none',
@@ -911,15 +908,14 @@ augmentations = [
     # 'scale',
     # 'shift',
     # 'noise',
-    # 'subsample',
+    'subsample',
     'interpol',
-    # 'ITP_SCL_SFT'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 train_models = [
-    'CNN',
+    # 'CNN',
     # 'LSTM',
-    # 'ConvRNN'
+    'ConvRNN'
 ]
 # END OF PARAMETERS
 
