@@ -705,9 +705,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.layers.pop()  # Dense(Softmax)
     conv_model.layers.pop()  # Flatten()
     conv_model.layers.pop()  # Dense(100)
-    conv_model.layers.pop()  # Dropout
     conv_model.layers.pop()  # Dense(300)
-    conv_model.layers.pop()  # Dropout
 
     # RNN part
 
@@ -728,7 +726,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
 
     # nunez_model.add(Permute((2, 1, 3))) # no need in the Nunez shape style
     # print(nunez_model.layers[-1].output_shape)
-    nunez_model.add(Reshape((15, 200)))
+    nunez_model.add(Reshape((18, 200)))
     # print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Masking(mask_value=0.0, input_shape=nunez_model.layers[-1].output_shape))
     # nunez_model.add(BatchNormalization(axis=2))
