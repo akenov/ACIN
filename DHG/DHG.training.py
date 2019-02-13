@@ -126,12 +126,18 @@ def get_frame_ids(filename_):
     return start_frame, end_frame
 
 
-def append_to_set(filename, dataset, labelset, skel_data):
-    data_shaped = skeleton_reshape(skel_data)
+def append_file_to_set(filename, dataset, labelset, skel_data):
+    if EXTEND_ACTIONS:
+        skel_data = extend_sequences(skel_data, FRAMES_THRESHOLD)
     label = LABELS[get_label_id(filename)]
 
-    dataset.append(data_shaped)
+    dataset.append(skeleton_reshape(skel_data))
     labelset.append(label)
+
+    if USE_SLIDINGWINDOW:
+        for windowed_sample in sliding_window_generator(skel_data):
+            dataset.append(skeleton_reshape(windowed_sample))
+            labelset.append(label)
 
 
 def load_from_fileset(fileset_):
@@ -140,14 +146,15 @@ def load_from_fileset(fileset_):
     for file in fileset_:
         print("Processing file: %s " % file)
         skeleton_sample = np.loadtxt(file, delimiter=' ', dtype=np.float64)
-
         frameid_start, frameid_end = get_frame_ids(file)
+        # print("frameid_start = %d" % frameid_start)
+        # print("frameid_end = %d" % frameid_end)
+        if frameid_start == 0:  # Inconsistent mapping with idx 0 by map file
+            frameid_start += 1
+            # print("frameid_start = %d" % frameid_start)
         skeleton_sample = skeleton_sample[frameid_start-1: frameid_end-1, :]
         print("Sample length %d " % skeleton_sample.shape[0])
-        # skeleton_sample = np.pad(skeleton_sample, [(0, MAX_WIDTH - skeleton_sample.shape[0]), (0, 0)],
-        #                          mode='constant', constant_values=0)
-
-        append_to_set(file, data_, labels_, skeleton_sample)
+        append_file_to_set(file, data_, labels_, skeleton_sample)
     # print(len(data_))
     # print(len(labels_))
     return np.asarray(data_), np.asarray(labels_)
@@ -644,10 +651,11 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     train_data_ = np.load(train_data_file_)
     # train_labels_ = np.load(train_labels_file_)
     test_data_ = np.load(test_data_file_)
-    print("Test Data Shape = %s " % (test_data_.shape,))
+    print("Train Data Shape = %s " % (train_data_.shape,))
     test_labels_ = np.load(test_labels_file_)
 
-    list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
+    list_idxes = np.arange(len(augmentations_) * train_data_.shape[0])
+    print("Indexes Length: %d " % list_idxes.shape[0])
     batch_size_aug_cnn = len(augmentations) * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     print("Input Shape = %s " % (ishape, ))
@@ -878,8 +886,8 @@ NUM_JOINTS = 22
 # FLD_SLSH = '/'  # USE for *NIX
 FLD_SLSH = '\\'  # USE for Windows
 STARTMARK = "_"
-# DHGFOLDER = "D:\\!DA-20092018\\DHG2016/"
-DHGFOLDER = "./DHG2016/"
+DHGFOLDER = "D:\\!DA-20092018\\DHG2016/"
+# DHGFOLDER = "./DHG2016/"
 # DHGFOLDER = "/home/antonk/racer/DHG_dataset/DHG2016/"
 allfiles_list = glob.glob(DHGFOLDER + "/*/finger_1/*/*/skeleton_world.txt")
 print("DHG14 - working only with FINGER 1")

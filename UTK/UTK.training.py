@@ -577,7 +577,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print("Test Data Shape = %s " % (test_data_.shape,))
     test_labels_ = np.load(test_labels_file_)
 
-    list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
+    list_idxes = np.arange(len(augmentations_) * train_data_.shape[0])
     # batch_size_aug_cnn = len(AUGMENTATIONS) * CNN_BATCH_SIZE
     batch_size_aug_cnn = COEFF_BATCH_CHAIN**2 * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
