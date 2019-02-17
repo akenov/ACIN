@@ -11,7 +11,7 @@ import keras
 from keras import regularizers
 from keras import backend as K
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, Reshape, Permute
+from keras.layers import Dense, Dropout, Flatten, Reshape, Permute, Activation
 from keras.layers import Conv2D, MaxPooling2D, LSTM, Masking, BatchNormalization
 from keras.callbacks import TensorBoard
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
@@ -362,13 +362,20 @@ def run_keras_cnn_model(loso_, epochs_n, run_suffix, aug_list):
     training_generator = DataGenerator(DATASET_NAME, generator_type, batch_size_aug, ishape, list_idxes, augmentations_)
 
     cnn_model = Sequential()
-    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=ishape))
-    cnn_model.add(Conv2D(64, (3, 3), activation='relu'))
+    # cnn_model.add(Conv2D(32, kernel_size=(3, 3), input_shape=ishape, use_bias=False))
+    # cnn_model.add(BatchNormalization())
+    # cnn_model.add(Activation(activation='relu'))
+
+    cnn_model.add(BatchNormalization(input_shape=ishape))
+    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(BatchNormalization())
+    cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    cnn_model.add(Dropout(0.25))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
     cnn_model.add(Flatten())
-    cnn_model.add(Dense(128, activation='relu'))
-    cnn_model.add(Dropout(0.5))
+    cnn_model.add(BatchNormalization())
+    cnn_model.add(Dense(128, activation='relu', use_bias=False))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
     cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     cnn_model.compile(loss=keras.losses.categorical_crossentropy,
@@ -578,8 +585,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     test_labels_ = np.load(test_labels_file_)
 
     list_idxes = np.arange(len(augmentations_) * train_data_.shape[0])
-    # batch_size_aug_cnn = len(AUGMENTATIONS) * CNN_BATCH_SIZE
-    batch_size_aug_cnn = COEFF_BATCH_CHAIN**2 * CNN_BATCH_SIZE
+    batch_size_aug_cnn = len(AUGMENTATIONS) * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     print("Input Shape = %s " % (ishape, ))
 
@@ -591,18 +597,24 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
                                            ishape, list_idxes, augmentations_)
 
     conv_model = Sequential()
-    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same' , input_shape=ishape))
+
+    conv_model.add(BatchNormalization(input_shape=ishape))
+    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))
+    conv_model.add(BatchNormalization())
+    conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))
+    conv_model.add(BatchNormalization())
+    conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # CNN part
     conv_model.add(Dropout(COEFF_DROPOUT))
-    conv_model.add(Dense(300))
+    conv_model.add(BatchNormalization())
+    conv_model.add(Dense(300, activation='relu', use_bias=False))
     conv_model.add(Dropout(COEFF_DROPOUT))
-    conv_model.add(Dense(100))
+    conv_model.add(BatchNormalization())
+    conv_model.add(Dense(100, activation='relu', use_bias=False))
     conv_model.add(Flatten())
     conv_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
@@ -636,9 +648,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.layers.pop()  # Dense(Softmax)
     conv_model.layers.pop()  # Flatten()
     conv_model.layers.pop()  # Dense(100)
-    conv_model.layers.pop()  # Dropout
     conv_model.layers.pop()  # Dense(300)
-    conv_model.layers.pop()  # Dropout
 
     # RNN part
 
@@ -647,15 +657,18 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
 
     nunez_model = Sequential()
-    nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, padding='same',
-                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
-    nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same',
-                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
-    nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same',
-                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
+    nunez_model.add(BatchNormalization(input_shape=ishape))
+    nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False,
+                           trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
+    nunez_model.add(BatchNormalization())
+    nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False,
+                           trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
+    nunez_model.add(BatchNormalization())
+    nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False,
+                           trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
 
     nunez_model.set_weights(conv_model.get_weights())
 
@@ -664,8 +677,9 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     nunez_model.add(Reshape((15, 200)))
     # print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Masking(mask_value=0.0, input_shape=nunez_model.layers[-1].output_shape))
-    # nunez_model.add(BatchNormalization(axis=2))
-    nunez_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2), stateful=False))
+    nunez_model.add(BatchNormalization())
+    nunez_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2),
+                         stateful=False, use_bias=False))
     nunez_model.add(Dropout(COEFF_DROPOUT))
     # nunez_model.add(Flatten())
     nunez_model.add(Dense(NUM_CLASSES, activation='softmax'))
@@ -737,6 +751,7 @@ def print_summary():
     print("| EXTEND_ACTIONS: " + str(EXTEND_ACTIONS))
     print("| USE_SLIDINGWINDOW: " + str(USE_SLIDINGWINDOW))
     print("| USE_SCALER: " + str(USE_SCALER))
+    print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
@@ -813,16 +828,16 @@ OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
 USE_SLIDINGWINDOW = True
 USE_SCALER = False
+CNN_TRAINABLE = False
 FRAMES_THRESHOLD = 10
 COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.5
 COEFF_REGULARIZATION_L2 = 0.015
-COEFF_BATCH_CHAIN = 5
 CNN_BATCH_SIZE = 100
 RNN_BATCH_SIZE = 16
 
 ITERATIONS = 1
-NUM_EPOCHS = 100
+NUM_EPOCHS = 1
 # AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 AUGMENTATIONS = [
     'none',

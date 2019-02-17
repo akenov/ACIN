@@ -26,8 +26,8 @@ class DataGenerator(keras.utils.Sequence):
         # Generate indexes of the batch
         indexes = self.list_idxes[index*self.batch_size:(index+1)*self.batch_size]
 
-        print("Processing batch #%d" % index)
-        print(indexes)
+        # print("Processing batch #%d" % index)
+        # print(indexes)
         # Generate data
         x, y = self.__data_generation(indexes)
 

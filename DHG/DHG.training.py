@@ -474,163 +474,6 @@ def run_keras_convrnn_model(loso_, epochs_n, run_suffix, aug_list):
     return
 
 
-# def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
-#     modelname = 'DHG Nunez LOSO #' + loso_[4:]
-#     cnn_batch_size_base = 20
-#     # epochs_n_cnn = 100
-#     regul_val = 0.015
-#     augmentations_ = aug_list
-#
-#     train_data_file_ = DATASET_NAME + ".train." + loso_ + ".data.npy"
-#     # train_labels_file_ = DATASET_NAME + ".train." + loso_ + ".labels.npy"
-#     test_data_file_ = DATASET_NAME + ".test." + loso_ + ".data.npy"
-#     test_labels_file_ = DATASET_NAME + ".test." + loso_ + ".labels.npy"
-#     generator_type_train = 'train.' + loso_
-#     cnn_histsave = OUTPUT_SAVES + DATASET_NAME + '.nunez_cnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-#     rnn_histsave = OUTPUT_SAVES + DATASET_NAME + '.nunez_rnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-#     cnn_scoresave = OUTPUT_SAVES + DATASET_NAME + '.nunez_cnn_scores.' + loso_ + '.' + run_suffix + '.save'
-#     rnn_weightsave = OUTPUT_SAVES + DATASET_NAME + '.nunez_weights.' + loso_ + '.' + run_suffix + '.h5'
-#     cfsave = OUTPUT_SAVES + DATASET_NAME + '.nunez_confusion_matrix.' + loso_ + '.' + run_suffix + '.save'
-#
-#     print("Loading data from saved files.")
-#     train_data_ = np.load(train_data_file_)
-#     # train_labels_ = np.load(train_labels_file_)
-#     test_data_ = np.load(test_data_file_)
-#     print("Test Data Shape = %s " % (test_data_.shape,))
-#     test_labels_ = np.load(test_labels_file_)
-#
-#     list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
-#     batch_size_aug_cnn = len(augmentations) * cnn_batch_size_base
-#     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-#     # print("Input Shape = %s " % (ishape, ))
-#     bi_shape = (batch_size_aug_cnn, test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-#     print("Batch Input Shape = %s " % (bi_shape,))
-#
-#     tensorboard = TensorBoard(log_dir='.', histogram_freq=0,
-#                               write_graph=True, write_images=False)
-#
-#     # Generators
-#     training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn, ishape, list_idxes, augmentations_)
-#
-#     conv_model = Sequential()
-#     conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, #batch_input_shape=bi_shape,
-#                              padding='same'))  #, kernel_regularizer=regularizers.l2(regul_val)
-#     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-#     conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))  #, kernel_regularizer=regularizers.l2(regul_val)
-#     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-#     conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))  #, kernel_regularizer=regularizers.l2(regul_val)
-#     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-#     # CNN part
-#     conv_model.add(Dense(300))
-#     conv_model.add(Dense(100))
-#     conv_model.add(Flatten())
-#     conv_model.add(Dense(NUM_CLASSES, activation='softmax'))
-#
-#     conv_model.compile(loss=keras.losses.categorical_crossentropy,
-#                        optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
-#                        metrics=['accuracy'])
-#
-#     conv_model.summary()
-#     print(datetime.now())
-#     print("Start training")
-#     history_cnn = conv_model.fit_generator(generator=training_generator_cnn,
-#                                            epochs=epochs_n,
-#                                            shuffle=False, use_multiprocessing=True,
-#                                            validation_data=(test_data_, test_labels_),
-#                                            callbacks=[tensorboard])
-#
-#     cnn_scores = conv_model.evaluate(test_data_, test_labels_, batch_size=batch_size_aug_cnn)
-#     print(datetime.now())
-#
-#     with open(cnn_scoresave, 'wb') as file_pi:
-#         pickle.dump(cnn_scores, file_pi)
-#         print("Saved training history %s" % cnn_scoresave)
-#
-#     with open(cnn_histsave, 'wb') as file_pi:
-#         pickle.dump(history_cnn.history, file_pi)
-#         print("Saved training history %s" % cnn_histsave)
-#
-#     conv_model.layers.pop()  # Dense(Softmax)
-#     conv_model.layers.pop()  # Flatten()
-#     conv_model.layers.pop()  # Dense(100)
-#     conv_model.layers.pop()  # Dense(300)
-#     print("Continue with RNN")
-#
-#     # RNN part
-#     rnn_batch_size_base = 6
-#     batch_size_aug_rnn = len(augmentations) * rnn_batch_size_base
-#
-#     training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
-#     # for layer in convrnn_model.layers:
-#     #     print(layer.output_shape)
-#
-#     convrnn_model = Sequential()
-#     convrnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, #batch_input_shape=bi_shape,
-#                              padding='same'))  #, kernel_regularizer=regularizers.l2(regul_val)
-#     convrnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-#     convrnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))  #, kernel_regularizer=regularizers.l2(regul_val)
-#     convrnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-#     convrnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))  #, kernel_regularizer=regularizers.l2(regul_val)
-#     convrnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-#
-#     convrnn_model.set_weights(conv_model.get_weights())
-#
-#     convrnn_model.add(Permute((2, 1, 3)))
-#     #print(convrnn_model.layers[-1].output_shape)
-#     convrnn_model.add(Reshape((62, 200)))
-#     #print(convrnn_model.layers[-1].output_shape)
-#     convrnn_model.add(LSTM(100, return_sequences=True, stateful=False, unroll=True))  #batch_input_shape=(100, 25, 200), , kernel_regularizer=regularizers.l2(regul_val)
-#     convrnn_model.add(Flatten())
-#     convrnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
-#
-#     convrnn_model.compile(loss=keras.losses.categorical_crossentropy,
-#                           optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
-#                           metrics=['accuracy'])
-#
-#     convrnn_model.summary()
-#     print(datetime.now())
-#     print("Start training")
-#     history_rnn = convrnn_model.fit_generator(generator=training_generator_rnn,
-#                                               epochs=int(epochs_n*5),
-#                                               shuffle=False, use_multiprocessing=True,
-#                                               validation_data=(test_data_, test_labels_),
-#                                               callbacks=[tensorboard])
-#
-#     print(datetime.now())
-#     # print(test_data_.shape)
-#     scores = convrnn_model.evaluate(test_data_, test_labels_, batch_size=batch_size_aug_cnn)
-#     print(datetime.now())
-#
-#     print("# KERAS MODEL: " + modelname + " # # # ")
-#     print('Test loss: %.4f' % scores[0])
-#     print('Test accuracy: %.3f %%' % (scores[1] * 100))
-#     pred_labels = convrnn_model.predict(test_data_, batch_size=batch_size_aug_cnn)
-#     # print("Prediction matrix data:")
-#     # print(pred_labels.shape)
-#     # print(pred_labels)
-#     # print(datetime.now())
-#
-#     with open(rnn_histsave, 'wb') as file_pi:
-#         pickle.dump(history_rnn.history, file_pi)
-#         print("Saved RNN training history %s" % rnn_histsave)
-#
-#     convrnn_model.save(rnn_weightsave)
-#     print("Saved model weights to %s" % rnn_weightsave)
-#
-#     cnf_matrix = confusion_matrix(test_labels_.argmax(axis=1), pred_labels.argmax(axis=1))
-#     cnf_matrix_proc = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
-#     cnf_matrix_proc = np.multiply(cnf_matrix_proc, 100)
-#     print(" CONFUSION MATRIX in % ")
-#     print(cnf_matrix_proc)
-#     with open(cfsave, 'wb') as file_pi:
-#         pickle.dump(cnf_matrix_proc, file_pi)
-#         print("Saved confusion matrix to %s" % cfsave)
-#     print("# KERAS MODEL: " + modelname + " # # # ")
-#     print("Closing Keras/TF Session")
-#     keras.backend.clear_session()
-#     return
-
-
 def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     modelname = DATASET_NAME + ' Nunez LOSO #' + loso_[4:]
     augmentations_ = aug_list
@@ -722,13 +565,15 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
 
     nunez_model = Sequential()
-    nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, #batch_input_shape=bi_shape,
-                             padding='same', trainable=False))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=False))
-    nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', trainable=False))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=False))
-    nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', trainable=False))  #, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=False))
+    nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, padding='same',
+                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2))) #batch_input_shape=bi_shape,
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
+    nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same',
+                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
+    nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same',
+                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
 
     nunez_model.set_weights(conv_model.get_weights())
 
