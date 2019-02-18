@@ -5,6 +5,7 @@ import math
 import os
 import numpy as np
 import itertools
+from numpy import matlib
 from datetime import datetime
 from DataGenerator import DataGenerator
 import keras
@@ -156,9 +157,12 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         walk_sample = extend_sequences(walk_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        print(scalerMinMax)
-        walk_sample = scalerStd.transform(walk_sample)
-        walk_sample = scalerMinMax.transform(walk_sample)
+        walk_mean = np.mean(walk_sample, axis=0).reshape(1, -1)
+        walk_mean_arr = matlib.repmat(walk_mean, walk_sample.shape[0], 1)
+        walk_sample = np.subtract(walk_sample, walk_mean_arr)
+        # print(scalerMinMax)
+        # walk_sample = scalerStd.transform(walk_sample)
+        # walk_sample = scalerMinMax.transform(walk_sample)
 
     data_set.append(skeleton_reshape(walk_sample))
     labels.append(actions_map.get("walk"))
@@ -174,8 +178,11 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         sitdown_sample = extend_sequences(sitdown_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        sitdown_sample = scalerStd.transform(sitdown_sample)
-        sitdown_sample = scalerMinMax.transform(sitdown_sample)
+        sitdown_mean = np.mean(sitdown_sample, axis=0).reshape(1, -1)
+        sitdown_mean_arr = matlib.repmat(sitdown_mean, sitdown_sample.shape[0], 1)
+        sitdown_sample = np.subtract(sitdown_sample, sitdown_mean_arr)
+        # sitdown_sample = scalerStd.transform(sitdown_sample)
+        # sitdown_sample = scalerMinMax.transform(sitdown_sample)
 
     data_set.append(skeleton_reshape(sitdown_sample))
     labels.append(actions_map.get("sitdown"))
@@ -191,8 +198,11 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         standup_sample = extend_sequences(standup_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        standup_sample = scalerStd.transform(standup_sample)
-        standup_sample = scalerMinMax.transform(standup_sample)
+        standup_mean = np.mean(standup_sample, axis=0).reshape(1, -1)
+        standup_mean_arr = matlib.repmat(standup_mean, standup_sample.shape[0], 1)
+        standup_sample = np.subtract(standup_sample, standup_mean_arr)
+        # standup_sample = scalerStd.transform(standup_sample)
+        # standup_sample = scalerMinMax.transform(standup_sample)
 
     data_set.append(skeleton_reshape(standup_sample))
     labels.append(actions_map.get("standup"))
@@ -208,8 +218,11 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         pickup_sample = extend_sequences(pickup_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        pickup_sample = scalerStd.transform(pickup_sample)
-        pickup_sample = scalerMinMax.transform(pickup_sample)
+        pickup_mean = np.mean(pickup_sample, axis=0).reshape(1, -1)
+        pickup_mean_arr = matlib.repmat(pickup_mean, pickup_sample.shape[0], 1)
+        pickup_sample = np.subtract(pickup_sample, pickup_mean_arr)
+        # pickup_sample = scalerStd.transform(pickup_sample)
+        # pickup_sample = scalerMinMax.transform(pickup_sample)
 
     data_set.append(skeleton_reshape(pickup_sample))
     labels.append(actions_map.get("pickup"))
@@ -221,7 +234,6 @@ def process_sample(sample_name):
     carry_params = content[line + 5].split(" ")
     if 'NaN' in carry_params:
         print("Carry Value NaN detected. Filling in blanks.")
-        # data_set.append(np.zeros([20, MAX_WIDTH, 3]))
         data_set.append(np.zeros([MAX_WIDTH, 20, 3]))
         labels.append(actions_map.get("carry"))
     else:
@@ -231,8 +243,11 @@ def process_sample(sample_name):
         if EXTEND_ACTIONS:
             carry_sample = extend_sequences(carry_sample, FRAMES_THRESHOLD)
         if USE_SCALER:
-            carry_sample = scalerStd.transform(carry_sample)
-            carry_sample = scalerMinMax.transform(carry_sample)
+            carry_mean = np.mean(carry_sample, axis=0).reshape(1, -1)
+            carry_mean_arr = matlib.repmat(carry_mean, carry_sample.shape[0], 1)
+            carry_sample = np.subtract(carry_sample, carry_mean_arr)
+            # carry_sample = scalerStd.transform(carry_sample)
+            # carry_sample = scalerMinMax.transform(carry_sample)
 
         data_set.append(skeleton_reshape(carry_sample))
         labels.append(actions_map.get("carry"))
@@ -248,8 +263,11 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         throw_sample = extend_sequences(throw_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        throw_sample = scalerStd.transform(throw_sample)
-        throw_sample = scalerMinMax.transform(throw_sample)
+        throw_mean = np.mean(throw_sample, axis=0).reshape(1, -1)
+        throw_mean_arr = matlib.repmat(throw_mean, throw_sample.shape[0], 1)
+        throw_sample = np.subtract(throw_sample, throw_mean_arr)
+        # throw_sample = scalerStd.transform(throw_sample)
+        # throw_sample = scalerMinMax.transform(throw_sample)
 
     data_set.append(skeleton_reshape(throw_sample))
     labels.append(actions_map.get("throw"))
@@ -265,8 +283,11 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         push_sample = extend_sequences(push_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        push_sample = scalerStd.transform(push_sample)
-        push_sample = scalerMinMax.transform(push_sample)
+        push_mean = np.mean(push_sample, axis=0).reshape(1, -1)
+        push_mean_arr = matlib.repmat(push_mean, push_sample.shape[0], 1)
+        push_sample = np.subtract(push_sample, push_mean_arr)
+        # push_sample = scalerStd.transform(push_sample)
+        # push_sample = scalerMinMax.transform(push_sample)
 
     data_set.append(skeleton_reshape(push_sample))
     labels.append(actions_map.get("push"))
@@ -282,8 +303,11 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         pull_sample = extend_sequences(pull_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        pull_sample = scalerStd.transform(pull_sample)
-        pull_sample = scalerMinMax.transform(pull_sample)
+        pull_mean = np.mean(pull_sample, axis=0).reshape(1, -1)
+        pull_mean_arr = matlib.repmat(pull_mean, pull_sample.shape[0], 1)
+        pull_sample = np.subtract(pull_sample, pull_mean_arr)
+        # pull_sample = scalerStd.transform(pull_sample)
+        # pull_sample = scalerMinMax.transform(pull_sample)
 
     data_set.append(skeleton_reshape(pull_sample))
     labels.append(actions_map.get("pull"))
@@ -299,8 +323,11 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         wavehands_sample = extend_sequences(wavehands_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        wavehands_sample = scalerStd.transform(wavehands_sample)
-        wavehands_sample = scalerMinMax.transform(wavehands_sample)
+        wavehands_mean = np.mean(wavehands_sample, axis=0).reshape(1, -1)
+        wavehands_mean_arr = matlib.repmat(wavehands_mean, wavehands_sample.shape[0], 1)
+        wavehands_sample = np.subtract(wavehands_sample, wavehands_mean_arr)
+        # wavehands_sample = scalerStd.transform(wavehands_sample)
+        # wavehands_sample = scalerMinMax.transform(wavehands_sample)
 
     data_set.append(skeleton_reshape(wavehands_sample))
     labels.append(actions_map.get("wavehands"))
@@ -316,8 +343,11 @@ def process_sample(sample_name):
     if EXTEND_ACTIONS:
         claphands_sample = extend_sequences(claphands_sample, FRAMES_THRESHOLD)
     if USE_SCALER:
-        claphands_sample = scalerStd.transform(claphands_sample)
-        claphands_sample = scalerMinMax.transform(claphands_sample)
+        claphands_mean = np.mean(claphands_sample, axis=0).reshape(1, -1)
+        claphands_mean_arr = matlib.repmat(claphands_mean, claphands_sample.shape[0], 1)
+        claphands_sample = np.subtract(claphands_sample, claphands_mean_arr)
+        # claphands_sample = scalerStd.transform(claphands_sample)
+        # claphands_sample = scalerMinMax.transform(claphands_sample)
 
     data_set.append(skeleton_reshape(claphands_sample))
     labels.append(actions_map.get("claphands"))
@@ -827,8 +857,8 @@ UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
 USE_SLIDINGWINDOW = True
-USE_SCALER = False
-CNN_TRAINABLE = False
+USE_SCALER = True
+CNN_TRAINABLE = True
 FRAMES_THRESHOLD = 10
 COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.5
