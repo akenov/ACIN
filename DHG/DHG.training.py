@@ -605,8 +605,8 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print(datetime.now())
 
     print("# KERAS MODEL: " + modelname + " # # # ")
-    print('CNN+RMM Test loss: %.4f' % rnn_scores[0])
-    print('CNN+RMM Test accuracy: %.3f %%' % (rnn_scores[1] * 100))
+    print('CNN+RNN Test loss: %.4f' % rnn_scores[0])
+    print('CNN+RNN Test accuracy: %.3f %%' % (rnn_scores[1] * 100))
     RESULTS.append(rnn_scores[1] * 100)
     pred_labels = nunez_model.predict(test_data_, batch_size=batch_size_aug_cnn)
     # print("Prediction matrix data:")

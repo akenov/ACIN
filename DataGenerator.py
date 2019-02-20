@@ -63,7 +63,7 @@ class DataGenerator(keras.utils.Sequence):
                 .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
             shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
             shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
-            # Do the shift augmentation
+            # Applying the shift augmentation
             shift_vec = np.array([[shift_x_fac, shift_y_fac, 0]])
             shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1)\
                 .reshape(sequence_clean.shape)
@@ -120,7 +120,7 @@ class DataGenerator(keras.utils.Sequence):
     @staticmethod
     def interpolate_augmentation(odata):
         # print("Doing time interpolation data augmentation")
-        data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
+        data_aug = np.zeros(odata.shape)
         num_seqncs = odata.shape[0]
         num_frames = odata.shape[1]
         num_joints = odata.shape[2]
@@ -139,6 +139,22 @@ class DataGenerator(keras.utils.Sequence):
                     frm_step = np.subtract(frm_next, frm_prev)
                     data_aug[seq, frm + 1, jnt, :] = np.add(frm_prev, np.multiply(frm_step, r))
                     # print("Interpolated coordinate value: %s " % data_aug[seq, int(frm + 1), jnt, :])
+        return data_aug
+
+    def translate_augmentation(self, odata):
+        # print("Doing translation data augmentation")
+        data_aug = np.zeros(odata.shape)
+        translate_factor = displmt = random.randint(-1, 1)
+        for seq in range(self.batch_size):
+            sequence = odata[seq, :, :, :]
+            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+            sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
+                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+            translate_arr = np.ones(sequence_clean.shape) * translate_factor
+            # Apply the translation augmentation
+            sequence_translated = sequence_clean + translate_arr
+            data_aug[seq, :, :, :] = np.pad(sequence_translated, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
+                                            mode='constant', constant_values=0)
         return data_aug
 
     def __augment_data(self, augtype, odata):
@@ -169,6 +185,13 @@ class DataGenerator(keras.utils.Sequence):
             scaled = self.scale_augmentation(odata)
             shifted_scaled = self.shift_augmentation(scaled)
             return shifted_scaled
+        elif augtype == 'translate':
+            translated = self.translate_augmentation(odata)
+            return translated
+        elif augtype == 'scale_translate':
+            translated = self.translate_augmentation(odata)
+            translated_scaled = self.shift_augmentation(translated)
+            return translated_scaled
         else:
             return odata
 

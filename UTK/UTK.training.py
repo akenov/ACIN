@@ -160,6 +160,10 @@ def process_sample(sample_name):
         walk_mean = np.mean(walk_sample, axis=0).reshape(1, -1)
         walk_mean_arr = matlib.repmat(walk_mean, walk_sample.shape[0], 1)
         walk_sample = np.subtract(walk_sample, walk_mean_arr)
+        walk_var = np.var(walk_sample, axis=0).reshape(1, -1)
+        walk_var = walk_var + np.multiply(np.ones(walk_var.shape), K.epsilon())
+        walk_sigma = np.sqrt(walk_var)
+        walk_sample = np.divide(walk_sample, walk_sigma)
         # print(scalerMinMax)
         # walk_sample = scalerStd.transform(walk_sample)
         # walk_sample = scalerMinMax.transform(walk_sample)
@@ -731,8 +735,8 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print(datetime.now())
 
     print("# KERAS MODEL: " + modelname + " # # # ")
-    print('CNN+RMM Test loss: %.4f' % rnn_scores[0])
-    print('CNN+RMM Test accuracy: %.3f %%' % (rnn_scores[1] * 100))
+    print('CNN+RNN Test loss: %.4f' % rnn_scores[0])
+    print('CNN+RNN Test accuracy: %.3f %%' % (rnn_scores[1] * 100))
     RESULTS.append(rnn_scores[1] * 100)
     pred_labels = nunez_model.predict(test_data_, batch_size=batch_size_aug_cnn)
     # print("Prediction matrix data:")
@@ -775,6 +779,7 @@ def trim_to_batch(nonbatch_data, nonbatch_labels, batchsize):
 def print_summary():
     results_len = len(RESULTS)
     results_arr = np.asarray(RESULTS)
+    cnn_results_arr = np.asarray(CNN_RESULTS)
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| AUGMENTATIONS: %s" % AUGMENTATIONS)
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
@@ -785,13 +790,15 @@ def print_summary():
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
-    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
     print("| COEFF_SLIDINGWINDOW: " + str(COEFF_SLIDINGWINDOW))
     print("| COEFF_DROPOUT: " + str(COEFF_DROPOUT))
     print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-    print("| " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
+    print("| " + DATASET_NAME + " " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
+    print("| Final Single Results " + RESULTS)
+    print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
+    print("| CNN Single Results " + CNN_RESULTS)
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
 
@@ -849,17 +856,17 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
-DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
-UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+# DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
+# UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
+DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
 USE_SLIDINGWINDOW = True
-USE_SCALER = True
+USE_SCALER = False
 CNN_TRAINABLE = True
-FRAMES_THRESHOLD = 10
+FRAMES_THRESHOLD = 13
 COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.5
 COEFF_REGULARIZATION_L2 = 0.015
@@ -868,15 +875,16 @@ RNN_BATCH_SIZE = 16
 
 ITERATIONS = 1
 NUM_EPOCHS = 1
-# AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
 AUGMENTATIONS = [
     'none',
-    "scale_shift",
+    # "scale_shift",
     # 'scale',
     # 'shift',
     # 'noise',
     # 'subsample',
     # 'interpol',
+    # 'translate',
+    # 'scale_translate'
 ]
 # MODELS: CNN, LSTM, ConvRNN
 TRAIN_MODELS = [
@@ -899,6 +907,7 @@ actionLabels.close()
 for model in TRAIN_MODELS:
     for run_num in np.arange(ITERATIONS):
         RESULTS = []
+        CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
             print("| File Batch: " + key)
