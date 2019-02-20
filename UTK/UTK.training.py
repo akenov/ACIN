@@ -653,7 +653,8 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     conv_model.compile(loss=keras.losses.categorical_crossentropy,
-                       optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
+                       # optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
+                       optimizer=keras.optimizers.Adam(),
                        metrics=['accuracy'])
 
     conv_model.summary()
@@ -719,7 +720,8 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     nunez_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     nunez_model.compile(loss=keras.losses.categorical_crossentropy,
-                        optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
+                        # optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
+                        optimizer=keras.optimizers.Adam(),
                         metrics=['accuracy'])
 
     nunez_model.summary()
@@ -856,10 +858,12 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
+DIRECTORY = "./joints/"
+UTKLABELSFILE = "./actionLabel.txt"
 # DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
 # UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
@@ -868,16 +872,16 @@ USE_SCALER = False
 CNN_TRAINABLE = True
 FRAMES_THRESHOLD = 13
 COEFF_SLIDINGWINDOW = 0.8
-COEFF_DROPOUT = 0.5
+COEFF_DROPOUT = 0.6
 COEFF_REGULARIZATION_L2 = 0.015
-CNN_BATCH_SIZE = 100
+CNN_BATCH_SIZE = 50
 RNN_BATCH_SIZE = 16
 
 ITERATIONS = 1
-NUM_EPOCHS = 1
+NUM_EPOCHS = 100
 AUGMENTATIONS = [
     'none',
-    # "scale_shift",
+    "scale_shift",
     # 'scale',
     # 'shift',
     # 'noise',
