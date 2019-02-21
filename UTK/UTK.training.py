@@ -670,6 +670,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print(datetime.now())
     print('CNN Test loss: %.4f' % cnn_scores[0])
     print('CNN Test accuracy: %.3f %%' % (cnn_scores[1] * 100))
+    CNN_RESULTS.append(cnn_scores[1] * 100)
 
     with open(cnn_scoresave, 'wb') as file_pi:
         pickle.dump(cnn_scores, file_pi)
@@ -798,9 +799,15 @@ def print_summary():
     print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| " + DATASET_NAME + " " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
-    print("| Final Single Results " + RESULTS)
     print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
-    print("| CNN Single Results " + CNN_RESULTS)
+    print("| Final Single Results ")
+    for res in RESULTS:
+        print("%.2f |" % res, end=" ")
+    print("")
+    print("| CNN Single Results ")
+    for res in CNN_RESULTS:
+        print("%.2f |" % res, end=" ")
+    print("")
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
 
@@ -881,7 +888,7 @@ ITERATIONS = 1
 NUM_EPOCHS = 100
 AUGMENTATIONS = [
     'none',
-    "scale_shift",
+    # "scale_shift",
     # 'scale',
     # 'shift',
     # 'noise',
@@ -890,7 +897,6 @@ AUGMENTATIONS = [
     # 'translate',
     # 'scale_translate'
 ]
-# MODELS: CNN, LSTM, ConvRNN
 TRAIN_MODELS = [
     # 'CNN',
     # 'LSTM',

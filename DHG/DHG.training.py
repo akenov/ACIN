@@ -499,7 +499,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
 
     list_idxes = np.arange(len(augmentations_) * train_data_.shape[0])
     print("Indexes Length: %d " % list_idxes.shape[0])
-    batch_size_aug_cnn = len(augmentations) * CNN_BATCH_SIZE
+    batch_size_aug_cnn = len(AUGMENTATIONS) * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     print("Input Shape = %s " % (ishape, ))
 
@@ -543,6 +543,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print(datetime.now())
     print('CNN Test loss: %.4f' % cnn_scores[0])
     print('CNN Test accuracy: %.3f %%' % (cnn_scores[1] * 100))
+    CNN_RESULTS.append(cnn_scores[1] * 100)
 
     with open(cnn_scoresave, 'wb') as file_pi:
         pickle.dump(cnn_scores, file_pi)
@@ -560,7 +561,7 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
 
     # RNN part
 
-    batch_size_aug_rnn = len(augmentations) * RNN_BATCH_SIZE
+    batch_size_aug_rnn = len(AUGMENTATIONS) * RNN_BATCH_SIZE
 
     training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
 
@@ -642,20 +643,32 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
 def print_summary():
     results_len = len(RESULTS)
     results_arr = np.asarray(RESULTS)
+    cnn_results_arr = np.asarray(CNN_RESULTS)
+    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+    print("| AUGMENTATIONS: %s" % AUGMENTATIONS)
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| EXTEND_ACTIONS: " + str(EXTEND_ACTIONS))
     print("| USE_SLIDINGWINDOW: " + str(USE_SLIDINGWINDOW))
     print("| USE_SCALER: " + str(USE_SCALER))
+    print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
-    print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
     print("| COEFF_SLIDINGWINDOW: " + str(COEFF_SLIDINGWINDOW))
     print("| COEFF_DROPOUT: " + str(COEFF_DROPOUT))
     print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-    print("| " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
+    print("| " + DATASET_NAME + " " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
+    print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
+    print("| Final Single Results ")
+    for res in RESULTS:
+        print("%.2f |" % res, end=" ")
+    print("")
+    print("| CNN Single Results ")
+    for res in CNN_RESULTS:
+        print("%.2f |" % res, end=" ")
+    print("")
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
 
@@ -742,18 +755,18 @@ OUTPUT_SAVES = "/saves/DHG/"
 EXTEND_ACTIONS = True
 USE_SLIDINGWINDOW = True
 USE_SCALER = False
-FRAMES_THRESHOLD = 20
+CNN_TRAINABLE = True
+FRAMES_THRESHOLD = 13
 COEFF_SLIDINGWINDOW = 0.8
-COEFF_DROPOUT = 0.5
+COEFF_DROPOUT = 0.6
 COEFF_REGULARIZATION_L2 = 0.015
-CNN_BATCH_SIZE = 100
+CNN_BATCH_SIZE = 50
 RNN_BATCH_SIZE = 16
-# K.set_epsilon(1e-06)
+K.set_epsilon(1e-06)
 
 iterations = 1
 num_epochs = 100
-# AUGMENTATIONS: none, shift, scale, noise, subsample, interpol
-augmentations = [
+AUGMENTATIONS = [
     'none',
     "scale_shift",
     # 'scale',
@@ -761,8 +774,9 @@ augmentations = [
     # 'noise',
     'subsample',
     'interpol',
+    # 'translate',
+    # 'scale_translate'
 ]
-# MODELS: CNN, LSTM, ConvRNN
 train_models = [
     # 'CNN',
     # 'LSTM',
@@ -781,6 +795,7 @@ for nseq in np.arange(0, len(frames_info), 1):
 for model in train_models:
     for run in np.arange(0, iterations, 1):
         RESULTS = []
+        CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
             # for subject in subject_list:
             # loso_id = subject.split('_')[1]
@@ -788,7 +803,7 @@ for model in train_models:
             # loso = subject[:len(subject)-1].replace('_', '').upper()
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
             print("| File Batch: " + key)
-            print("| Augmentations: %s" % augmentations)
+            print("| Augmentations: %s" % AUGMENTATIONS)
             if EXTEND_ACTIONS:
                 print("| Extend Actions #Frames Threshold: %d" % FRAMES_THRESHOLD)
             if USE_SLIDINGWINDOW:
@@ -838,11 +853,11 @@ for model in train_models:
 
             print("Training " + model + " model")
             if model == 'CNN':
-                run_keras_cnn_model(key, num_epochs, str(int(run + 1)), augmentations)
+                run_keras_cnn_model(key, num_epochs, str(int(run + 1)), AUGMENTATIONS)
             elif model == 'LSTM':
-                run_keras_lstm_model(key, num_epochs, str(int(run + 1)), augmentations)
+                run_keras_lstm_model(key, num_epochs, str(int(run + 1)), AUGMENTATIONS)
             elif model == 'ConvRNN':
-                run_keras_nunez_model(key, num_epochs, str(int(run + 1)), augmentations)
+                run_keras_nunez_model(key, num_epochs, str(int(run + 1)), AUGMENTATIONS)
             else:
                 print("Model unknown!")
 

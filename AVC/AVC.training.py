@@ -696,7 +696,8 @@ augmentations = [
     # 'subsample',
     # 'interpol'
 ]
-EXPERIMENTS_DIR = "./experimentsData/"
+# EXPERIMENTS_DIR = "./AVCexperimentsData/"
+EXPERIMENTS_DIR = "D:\\!DA-20092018\\AVCexperimentsData\\"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "."
 # MODELS: CNN, LSTM, ConvRNN

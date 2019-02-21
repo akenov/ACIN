@@ -53,7 +53,26 @@ class DataGenerator(keras.utils.Sequence):
         data_aug = np.multiply(odata, fa_scale)
         return data_aug
 
-    def shift_augmentation(self, odata):
+    def shift_uni_xyz_augmentation(self, odata):
+        # print("Doing data shift augmentation.")
+        data_aug = np.zeros(odata.shape)
+        fa_shift = 1 + (random.randrange(-10, 10, 1) / 100)  # uniform distribution
+        for seq in range(self.batch_size):
+            sequence = odata[seq, :, :, :]
+            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+            sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
+                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+            # shift_vec = np.array([[fa_shift, fa_shift, 0]])
+            # shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1) \
+            #     .reshape(sequence_clean.shape)
+            shift = matlib.repmat(fa_shift, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 3) \
+                .reshape(sequence_clean.shape)
+            sequence_shifted = sequence_clean + shift
+            data_aug[seq, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
+                                            mode='constant', constant_values=0)
+        return data_aug
+
+    def shift_gauss_xy_augmentation(self, odata):
         # print("Doing data shift augmentation.")
         data_aug = np.zeros(odata.shape)
         for seq in range(self.batch_size):
@@ -163,34 +182,37 @@ class DataGenerator(keras.utils.Sequence):
         elif augtype == 'scale':
             scaled = self.scale_augmentation(odata)
             return scaled
-        elif augtype == 'shift':
-            shifted = self.shift_augmentation(odata)
+        elif augtype == 'shift_uni_xyz':
+            shifted = self.shift_uni_xyz_augmentation(odata)
+            return shifted
+        elif augtype == 'shift_gauss_xy':
+            shifted = self.shift_gauss_xy_augmentation(odata)
             return shifted
         elif augtype == 'noise':
             scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_augmentation(scaled)
+            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
             noised = self.noise_augmentation(shifted_scaled)
             return noised
         elif augtype == 'subsample':
             scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_augmentation(scaled)
+            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
             subsampled = self.subsample_augmentation(shifted_scaled)
             return subsampled
         elif augtype == 'interpol':
             scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_augmentation(scaled)
+            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
             interpolated = self.interpolate_augmentation(shifted_scaled)
             return interpolated
         elif augtype == 'scale_shift':
             scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_augmentation(scaled)
+            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
             return shifted_scaled
         elif augtype == 'translate':
             translated = self.translate_augmentation(odata)
             return translated
         elif augtype == 'scale_translate':
             translated = self.translate_augmentation(odata)
-            translated_scaled = self.shift_augmentation(translated)
+            translated_scaled = self.shift_uni_xyz_augmentation(translated)
             return translated_scaled
         else:
             return odata
