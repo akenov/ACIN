@@ -363,10 +363,8 @@ def process_sample(sample_name):
     return np.asarray(data_set), np.asarray(labels).reshape([-1, 1])
 
 
-def run_keras_cnn_model(loso_, epochs_n, run_suffix, aug_list):
+def run_keras_cnn_model(loso_, run_suffix):
     modelname = DATASET_NAME + ' CNN LOSO #' + loso_[4:]
-    batch_size_base = 100
-    augmentations_ = aug_list
 
     train_data_file_ = DATASET_NAME + ".train." + loso_ + ".data.npy"
     # train_labels_file_ = DATASET_NAME + ".train." + loso_ + ".labels.npy"
@@ -379,48 +377,64 @@ def run_keras_cnn_model(loso_, epochs_n, run_suffix, aug_list):
     cfsave = OUTPUT_SAVES + DATASET_NAME + '_mnistcnn_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
 
     print("Loading data from saved files.")
-    train_data = np.load(train_data_file_)
+    train_data_ = np.load(train_data_file_)
     # train_labels_ = np.load(train_labels_file_)
-    test_data = np.load(test_data_file_)
-    test_labels = np.load(test_labels_file_)
+    test_data_ = np.load(test_data_file_)
+    print("Test Data Shape = %s " % (test_data_.shape,))
+    test_labels_ = np.load(test_labels_file_)
 
-    list_idxes = np.arange(0, len(augmentations_) * train_data.shape[0], 1)
-    batch_size_aug = len(augmentations_) * batch_size_base
-    ishape = (test_data.shape[1], test_data.shape[2], test_data.shape[3])
-    # print("Input Shape = %s " % (ishape, ))
+    list_idxes = np.arange(len(AUGMENTATIONS) * train_data_.shape[0])
+    batch_size_aug = len(AUGMENTATIONS) * CNN_BATCH_SIZE
+    ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
+    print("Input Shape = %s " % (ishape, ))
 
     tensorboard = TensorBoard(log_dir=OUTPUT_SAVES, histogram_freq=0,
                               write_graph=True, write_images=True)
-
-    # Generators
-    training_generator = DataGenerator(DATASET_NAME, generator_type, batch_size_aug, ishape, list_idxes, augmentations_)
+    training_generator = DataGenerator(DATASET_NAME, generator_type, batch_size_aug,
+                                       ishape, list_idxes, AUGMENTATIONS)
 
     cnn_model = Sequential()
-    # cnn_model.add(Conv2D(32, kernel_size=(3, 3), input_shape=ishape, use_bias=False))
-    # cnn_model.add(BatchNormalization())
-    # cnn_model.add(Activation(activation='relu'))
 
     cnn_model.add(BatchNormalization(input_shape=ishape))
-    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
+    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
     cnn_model.add(BatchNormalization())
-    cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
+    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    cnn_model.add(BatchNormalization())
+    cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
     cnn_model.add(Dropout(COEFF_DROPOUT))
-    cnn_model.add(Flatten())
     cnn_model.add(BatchNormalization())
-    cnn_model.add(Dense(128, activation='relu', use_bias=False))
+    cnn_model.add(Dense(300, activation='relu', use_bias=False))
     cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(BatchNormalization())
+    cnn_model.add(Dense(100, activation='relu', use_bias=False))
+    cnn_model.add(Flatten())
     cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
+    # Old MNIST Model with single Dense layer
+    # cnn_model.add(BatchNormalization(input_shape=ishape))
+    # cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
+    # cnn_model.add(BatchNormalization())
+    # cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
+    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    # cnn_model.add(Dropout(COEFF_DROPOUT))
+    # cnn_model.add(Flatten())
+    # cnn_model.add(BatchNormalization())
+    # cnn_model.add(Dense(128, activation='relu', use_bias=False))
+    # cnn_model.add(Dropout(COEFF_DROPOUT))
+    # cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
+
     cnn_model.compile(loss=keras.losses.categorical_crossentropy,
-                      optimizer=keras.optimizers.Adadelta(),
+                      optimizer=get_optimizer(),
                       metrics=['accuracy'])
 
     cnn_model.summary()
     print(datetime.now())
     print("Start training")
     history = cnn_model.fit_generator(generator=training_generator,
-                                      epochs=epochs_n,
+                                      epochs=NUM_EPOCHS,
                                       shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
                                       callbacks=[tensorboard])
 
@@ -430,15 +444,15 @@ def run_keras_cnn_model(loso_, epochs_n, run_suffix, aug_list):
     #                     validation_data=(test_data, test_labels))
 
     print(datetime.now())
-    print(test_data.shape)
-    scores = cnn_model.evaluate(test_data, test_labels, batch_size=batch_size_aug)
+    print(test_data_.shape)
+    scores = cnn_model.evaluate(test_data_, test_labels_, batch_size=batch_size_aug)
     print(datetime.now())
 
     print("# KERAS MODEL: " + modelname + " # # # ")
     print('Test loss: %.4f' % scores[0])
     print('Test accuracy: %.3f %%' % (scores[1] * 100))
     RESULTS.append(scores[1] * 100)
-    pred_labels = cnn_model.predict(test_data, batch_size=batch_size_aug)
+    pred_labels = cnn_model.predict(test_data_, batch_size=batch_size_aug)
     # print("Prediction matrix data:")
     # print(pred_labels.shape)
     # print(pred_labels)
@@ -455,7 +469,7 @@ def run_keras_cnn_model(loso_, epochs_n, run_suffix, aug_list):
     cnn_model.save(weightsave)
     print("Saved model weights to %s" % weightsave)
 
-    cnf_matrix = confusion_matrix(test_labels.argmax(axis=1), pred_labels.argmax(axis=1))
+    cnf_matrix = confusion_matrix(test_labels_.argmax(axis=1), pred_labels.argmax(axis=1))
     cnf_matrix_proc = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
     cnf_matrix_proc = np.multiply(cnf_matrix_proc, 100)
     print(" CONFUSION MATRIX in % ")
@@ -595,9 +609,8 @@ def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
     return
 
 
-def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
+def run_keras_nunez_model(loso_, run_suffix):
     modelname = DATASET_NAME + ' Nunez LOSO #' + loso_[4:]
-    augmentations_ = aug_list
 
     train_data_file_ = DATASET_NAME + ".train." + loso_ + ".data.npy"
     # train_labels_file_ = DATASET_NAME + ".train." + loso_ + ".labels.npy"
@@ -618,17 +631,15 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print("Test Data Shape = %s " % (test_data_.shape,))
     test_labels_ = np.load(test_labels_file_)
 
-    list_idxes = np.arange(len(augmentations_) * train_data_.shape[0])
+    list_idxes = np.arange(len(AUGMENTATIONS) * train_data_.shape[0])
     batch_size_aug_cnn = len(AUGMENTATIONS) * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     print("Input Shape = %s " % (ishape, ))
 
     tensorboard = TensorBoard(log_dir=OUTPUT_SAVES, histogram_freq=0,
                               write_graph=True, write_images=True)
-
-    # Generators
     training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn,
-                                           ishape, list_idxes, augmentations_)
+                                           ishape, list_idxes, AUGMENTATIONS)
 
     conv_model = Sequential()
 
@@ -653,15 +664,14 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     conv_model.compile(loss=keras.losses.categorical_crossentropy,
-                       # optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
-                       optimizer=keras.optimizers.Adam(),
+                       optimizer=get_optimizer(),
                        metrics=['accuracy'])
 
     conv_model.summary()
     print(datetime.now())
     print("Start training")
     history_cnn = conv_model.fit_generator(generator=training_generator_cnn,
-                                           epochs=epochs_n, validation_data=(test_data_, test_labels_),
+                                           epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
                                            shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
                                            callbacks=[tensorboard])
 
@@ -687,10 +697,9 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.layers.pop()  # Dense(300)
 
     # RNN part
-
     batch_size_aug_rnn = len(AUGMENTATIONS) * RNN_BATCH_SIZE
-
-    training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
+    training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn,
+                                           ishape, list_idxes, AUGMENTATIONS)
 
     nunez_model = Sequential()
     nunez_model.add(BatchNormalization(input_shape=ishape))
@@ -721,15 +730,14 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     nunez_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     nunez_model.compile(loss=keras.losses.categorical_crossentropy,
-                        # optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
-                        optimizer=keras.optimizers.Adam(),
+                        optimizer=get_optimizer(),
                         metrics=['accuracy'])
 
     nunez_model.summary()
     print(datetime.now())
     print("Start training")
     history_rnn = nunez_model.fit_generator(generator=training_generator_rnn,
-                                            epochs=int(epochs_n*5), validation_data=(test_data_, test_labels_),
+                                            epochs=int(NUM_EPOCHS*5), validation_data=(test_data_, test_labels_),
                                             shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
                                             callbacks=[tensorboard])
 
@@ -779,6 +787,14 @@ def trim_to_batch(nonbatch_data, nonbatch_labels, batchsize):
     return nonbatch_data[:newlength_data, :], nonbatch_labels[:newlength_data, :]
 
 
+def get_optimizer():
+    print("Using " + OPTIMIZER[0] + " optimizer")
+    if OPTIMIZER[0] == "Adam":
+        return keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, decay=0.0)
+    elif OPTIMIZER[0] == "AdaDelta":
+        return keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0)
+
+
 def print_summary():
     results_len = len(RESULTS)
     results_arr = np.asarray(RESULTS)
@@ -791,6 +807,7 @@ def print_summary():
     print("| USE_SCALER: " + str(USE_SCALER))
     print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+    print("| OPTIMIZER: " + OPTIMIZER[0])
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
@@ -801,13 +818,16 @@ def print_summary():
     print("| " + DATASET_NAME + " " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
     print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
     print("| Final Single Results ")
+    print("| ", end=" ")
     for res in RESULTS:
         print("%.2f |" % res, end=" ")
     print("")
-    print("| CNN Single Results ")
-    for res in CNN_RESULTS:
-        print("%.2f |" % res, end=" ")
-    print("")
+    if TRAIN_MODELS[0] == "ConvRNN":
+        print("| CNN Single Results ")
+        print("| ", end=" ")
+        for res in CNN_RESULTS:
+            print("%.2f |" % res, end=" ")
+        print("")
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
 
@@ -865,12 +885,12 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
-DIRECTORY = "./joints/"
-UTKLABELSFILE = "./actionLabel.txt"
+# DIRECTORY = "./joints/"
+# UTKLABELSFILE = "./actionLabel.txt"
 # DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
 # UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
@@ -883,24 +903,29 @@ COEFF_DROPOUT = 0.6
 COEFF_REGULARIZATION_L2 = 0.015
 CNN_BATCH_SIZE = 50
 RNN_BATCH_SIZE = 16
+K.set_epsilon(1e-06)
 
 ITERATIONS = 1
-NUM_EPOCHS = 100
+NUM_EPOCHS = 1
 AUGMENTATIONS = [
     'none',
     # "scale_shift",
     # 'scale',
-    # 'shift',
+    # 'shift_gauss_xy',
     # 'noise',
     # 'subsample',
     # 'interpol',
     # 'translate',
     # 'scale_translate'
 ]
+OPTIMIZER = [
+    "Adam",
+    # "AdaDelta"
+]
 TRAIN_MODELS = [
-    # 'CNN',
+    'CNN',
     # 'LSTM',
-    'ConvRNN'
+    # 'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -908,7 +933,6 @@ le = LabelEncoder()
 ohe = OneHotEncoder(sparse=False)
 scalerStd = StandardScaler()
 scalerMinMax = MinMaxScaler(feature_range=(-1, 1))
-K.set_epsilon(1e-06)
 
 actionLabels = open(UTKLABELSFILE, "r")
 content = actionLabels.readlines()
@@ -999,11 +1023,11 @@ for model in TRAIN_MODELS:
 
             print("Training " + model + " model")
             if model == 'CNN':
-                run_keras_cnn_model(key, NUM_EPOCHS, str(int(run_num + 1)), AUGMENTATIONS)
+                run_keras_cnn_model(key, str(int(run_num + 1)))
             elif model == 'LSTM':
-                run_keras_lstm_model(key, NUM_EPOCHS, str(int(run_num + 1)), AUGMENTATIONS)
+                run_keras_lstm_model(key, str(int(run_num + 1)))
             elif model == 'ConvRNN':
-                run_keras_nunez_model(key, NUM_EPOCHS, str(int(run_num + 1)), AUGMENTATIONS)
+                run_keras_nunez_model(key, str(int(run_num + 1)))
             else:
                 print("Model unknown!")
         print("Finished run #" + str(int(run_num + 1)))

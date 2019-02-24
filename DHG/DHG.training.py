@@ -652,6 +652,7 @@ def print_summary():
     print("| USE_SCALER: " + str(USE_SCALER))
     print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+    print("| OPTIMIZER: " + OPTIMIZER[0])
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
@@ -662,13 +663,16 @@ def print_summary():
     print("| " + DATASET_NAME + " " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
     print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
     print("| Final Single Results ")
+    print("| ", end=" ")
     for res in RESULTS:
         print("%.2f |" % res, end=" ")
     print("")
-    print("| CNN Single Results ")
-    for res in CNN_RESULTS:
-        print("%.2f |" % res, end=" ")
-    print("")
+    if TRAIN_MODELS[0] == "ConvRNN":
+        print("| CNN Single Results ")
+        print("| ", end=" ")
+        for res in CNN_RESULTS:
+            print("%.2f |" % res, end=" ")
+        print("")
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
 
@@ -764,8 +768,8 @@ CNN_BATCH_SIZE = 50
 RNN_BATCH_SIZE = 16
 K.set_epsilon(1e-06)
 
-iterations = 1
-num_epochs = 100
+ITERATIONS = 1
+NUM_EPOCHS = 100
 AUGMENTATIONS = [
     'none',
     "scale_shift",
@@ -777,7 +781,11 @@ AUGMENTATIONS = [
     # 'translate',
     # 'scale_translate'
 ]
-train_models = [
+OPTIMIZER = [
+    # "Adam",
+    "AdaDelta"
+]
+TRAIN_MODELS = [
     # 'CNN',
     # 'LSTM',
     'ConvRNN'
@@ -792,8 +800,8 @@ for nseq in np.arange(0, len(frames_info), 1):
     SEQ_INFO[row[0]-1, row[1]-1, row[2]-1, row[3]-1, 0] = row[4]
     SEQ_INFO[row[0]-1, row[1]-1, row[2]-1, row[3]-1, 1] = row[5]
 
-for model in train_models:
-    for run in np.arange(0, iterations, 1):
+for model in TRAIN_MODELS:
+    for run in np.arange(0, ITERATIONS, 1):
         RESULTS = []
         CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
@@ -853,11 +861,11 @@ for model in train_models:
 
             print("Training " + model + " model")
             if model == 'CNN':
-                run_keras_cnn_model(key, num_epochs, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_cnn_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
             elif model == 'LSTM':
-                run_keras_lstm_model(key, num_epochs, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_lstm_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
             elif model == 'ConvRNN':
-                run_keras_nunez_model(key, num_epochs, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_nunez_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
             else:
                 print("Model unknown!")
 
