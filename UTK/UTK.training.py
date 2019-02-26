@@ -371,10 +371,10 @@ def run_keras_cnn_model(loso_, run_suffix):
     test_data_file_ = DATASET_NAME + ".test." + loso_ + ".data.npy"
     test_labels_file_ = DATASET_NAME + ".test." + loso_ + ".labels.npy"
     generator_type = 'train.' + loso_
-    histsave = OUTPUT_SAVES + DATASET_NAME + '_mnistcnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    scoresave = OUTPUT_SAVES + DATASET_NAME + '_mnistcnn_scores.' + loso_ + '.' + run_suffix + '.save'
-    weightsave = OUTPUT_SAVES + DATASET_NAME + '_mnistcnn_weights_' + loso_ + '.' + run_suffix + '.h5'
-    cfsave = OUTPUT_SAVES + DATASET_NAME + '_mnistcnn_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
+    histsave = RESULTS_DIR + DATASET_NAME + '_mnistcnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
+    scoresave = RESULTS_DIR + DATASET_NAME + '_mnistcnn_scores.' + loso_ + '.' + run_suffix + '.save'
+    weightsave = RESULTS_DIR + DATASET_NAME + '_mnistcnn_weights_' + loso_ + '.' + run_suffix + '.h5'
+    cfsave = RESULTS_DIR + DATASET_NAME + '_mnistcnn_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
 
     print("Loading data from saved files.")
     train_data_ = np.load(train_data_file_)
@@ -388,7 +388,7 @@ def run_keras_cnn_model(loso_, run_suffix):
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     print("Input Shape = %s " % (ishape, ))
 
-    tensorboard = TensorBoard(log_dir=OUTPUT_SAVES, histogram_freq=0,
+    tensorboard = TensorBoard(log_dir=RESULTS_DIR, histogram_freq=0,
                               write_graph=True, write_images=True)
     training_generator = DataGenerator(DATASET_NAME, generator_type, batch_size_aug,
                                        ishape, list_idxes, AUGMENTATIONS)
@@ -398,17 +398,17 @@ def run_keras_cnn_model(loso_, run_suffix):
     cnn_model.add(BatchNormalization(input_shape=ishape))
     cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    cnn_model.add(BatchNormalization())
+    # cnn_model.add(BatchNormalization())
     cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    cnn_model.add(BatchNormalization())
+    # cnn_model.add(BatchNormalization())
     cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
     cnn_model.add(Dropout(COEFF_DROPOUT))
-    cnn_model.add(BatchNormalization())
+    # cnn_model.add(BatchNormalization())
     cnn_model.add(Dense(300, activation='relu', use_bias=False))
     cnn_model.add(Dropout(COEFF_DROPOUT))
-    cnn_model.add(BatchNormalization())
+    # cnn_model.add(BatchNormalization())
     cnn_model.add(Dense(100, activation='relu', use_bias=False))
     cnn_model.add(Flatten())
     cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
@@ -435,7 +435,7 @@ def run_keras_cnn_model(loso_, run_suffix):
     print("Start training")
     history = cnn_model.fit_generator(generator=training_generator,
                                       epochs=NUM_EPOCHS,
-                                      shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
+                                      shuffle=False, use_multiprocessing=MULTI_CPU,
                                       callbacks=[tensorboard])
 
     # history = model.fit(train_data, train_labels,
@@ -483,20 +483,18 @@ def run_keras_cnn_model(loso_, run_suffix):
     return
 
 
-def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
+def run_keras_lstm_model(loso_, run_suffix):
     modelname = DATASET_NAME + ' LSTM LOSO #' + loso_[4:]
-    batch_size_base = 20
-    augmentations_ = aug_list
 
     train_data_file_ = DATASET_NAME + ".train." + loso_ + ".data.npy"
     # train_labels_file_ = DATASET_NAME + ".train." + loso_ + ".labels.npy"
     test_data_file_ = DATASET_NAME + ".test." + loso_ + ".data.npy"
     test_labels_file_ = DATASET_NAME + ".test." + loso_ + ".labels.npy"
     generator_type_train = 'train.' + loso_
-    histsave = OUTPUT_SAVES + DATASET_NAME + '_lstm_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    scoresave = OUTPUT_SAVES + DATASET_NAME + '_lstm_scores.' + loso_ + '.' + run_suffix + '.save'
-    weightsave = OUTPUT_SAVES + DATASET_NAME + '_lstm_weights_' + loso_ + '.' + run_suffix + '.h5'
-    cfsave = OUTPUT_SAVES + DATASET_NAME + '_lstm_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
+    histsave = RESULTS_DIR + DATASET_NAME + '_lstm_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
+    scoresave = RESULTS_DIR + DATASET_NAME + '_lstm_scores.' + loso_ + '.' + run_suffix + '.save'
+    weightsave = RESULTS_DIR + DATASET_NAME + '_lstm_weights_' + loso_ + '.' + run_suffix + '.h5'
+    cfsave = RESULTS_DIR + DATASET_NAME + '_lstm_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
 
     print("Loading data from saved files.")
     train_data = np.load(train_data_file_)
@@ -504,47 +502,25 @@ def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
     test_data_ = np.load(test_data_file_)
     test_labels_ = np.load(test_labels_file_)
 
-    list_idxes = np.arange(0, len(augmentations_) * train_data.shape[0], 1)
-    batch_size_aug = len(augmentations_) * batch_size_base
+    list_idxes = np.arange(0, len(AUGMENTATIONS) * train_data.shape[0], 1)
+    batch_size_aug = len(AUGMENTATIONS) * RNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-    timesteps_dim = test_data_.shape[2]
-    features_dim = test_data_.shape[1] * test_data_.shape[3]
-    # print("Input Shape = %s " % (ishape,))
+    print("Input Shape = %s " % (ishape,))
 
     # Generators
-    training_generator = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug, ishape, list_idxes, augmentations_)
+    training_generator = DataGenerator(DATASET_NAME, generator_type_train,
+                                       batch_size_aug, ishape, list_idxes, AUGMENTATIONS)
 
-    tensorboard = TensorBoard(log_dir=OUTPUT_SAVES, histogram_freq=0,
+    tensorboard = TensorBoard(log_dir=RESULTS_DIR, histogram_freq=0,
                               write_graph=True, write_images=True)
 
-    # lstm_model = Sequential()
-    # lstm_model.add(Permute((2, 1, 3), input_shape=ishape,  batch_input_shape=(batch_size_aug, test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])))
-    # permute_shape = lstm_model.layers[0].output_shape
-    # resh_dim1 = permute_shape[2]
-    # resh_dim2 = permute_shape[1] * permute_shape[3]
-    # resh_shape = (resh_dim1, resh_dim2)
-    # lstm_model.add(Reshape(resh_shape))
-    # lstm_model.add(Masking(mask_value=0.0, input_shape=lstm_model.layers[-1].output_shape))
-    # lstm_model.add(LSTM(128, return_sequences=True, stateful=True, unroll=True, kernel_regularizer=regularizers.l2(regul_val))) #input_shape=[batch_size_aug, resh_dim1, resh_dim2],
-    # lstm_model.add(LSTM(128, return_sequences=True, stateful=True))
-    # lstm_model.add(LSTM(128, stateful=True))
-    # # lstm_model.add(Dense(128, activation='relu'))
-    # # lstm_model.add(Dropout(0.5))
-    # lstm_model.add(Dense(NUM_CLASSES, activation='softmax'))
-
     lstm_model = Sequential()
-
-    lstm_model.add(Permute((2, 1, 3), input_shape=ishape))
-    permute_shape = lstm_model.layers[0].output_shape
-    resh_dim1 = permute_shape[2]
-    resh_dim2 = permute_shape[1] * permute_shape[3]
-    resh_shape = (resh_dim1, resh_dim2)
-    lstm_model.add(Reshape(resh_shape))
+    resh_shape = (test_data_.shape[1], test_data_.shape[2] * test_data_.shape[3])
+    lstm_model.add(Reshape(resh_shape, input_shape=ishape))
     lstm_model.add(Masking(mask_value=0.0, input_shape=lstm_model.layers[-1].output_shape))
     lstm_model.add(BatchNormalization(axis=2))
     lstm_model.add(LSTM(128, return_sequences=True, stateful=False))
-    # lstm_model.add(LSTM(128, return_sequences=True, stateful=False))
-    lstm_model.add(LSTM(128, stateful=False))
+    lstm_model.add(LSTM(64, stateful=False))
     lstm_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     lstm_model.compile(loss=keras.losses.categorical_crossentropy,
@@ -561,8 +537,8 @@ def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
     #                          validation_data=(test_data, test_labels))
 
     history = lstm_model.fit_generator(generator=training_generator,
-                                       epochs=epochs_n,
-                                       shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
+                                       epochs=4*NUM_EPOCHS,
+                                       shuffle=False, use_multiprocessing=MULTI_CPU,
                                        callbacks=[tensorboard])
 
     print(datetime.now())
@@ -617,12 +593,12 @@ def run_keras_nunez_model(loso_, run_suffix):
     test_data_file_ = DATASET_NAME + ".test." + loso_ + ".data.npy"
     test_labels_file_ = DATASET_NAME + ".test." + loso_ + ".labels.npy"
     generator_type_train = 'train.' + loso_
-    cnn_histsave = OUTPUT_SAVES + DATASET_NAME + '_nunez_cnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    rnn_histsave = OUTPUT_SAVES + DATASET_NAME + '_nunez_rnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    cnn_scoresave = OUTPUT_SAVES + DATASET_NAME + '_nunez_cnn_scores.' + loso_ + '.' + run_suffix + '.save'
-    rnn_scoresave = OUTPUT_SAVES + DATASET_NAME + '_nunez_rnn_scores.' + loso_ + '.' + run_suffix + '.save'
-    rnn_weightsave = OUTPUT_SAVES + DATASET_NAME + '_nunez_weights_' + loso_ + '.' + run_suffix + '.h5'
-    cfsave = OUTPUT_SAVES + DATASET_NAME + '_nunez_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
+    cnn_histsave = RESULTS_DIR + DATASET_NAME + '_nunez_cnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
+    rnn_histsave = RESULTS_DIR + DATASET_NAME + '_nunez_rnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
+    cnn_scoresave = RESULTS_DIR + DATASET_NAME + '_nunez_cnn_scores.' + loso_ + '.' + run_suffix + '.save'
+    rnn_scoresave = RESULTS_DIR + DATASET_NAME + '_nunez_rnn_scores.' + loso_ + '.' + run_suffix + '.save'
+    rnn_weightsave = RESULTS_DIR + DATASET_NAME + '_nunez_weights_' + loso_ + '.' + run_suffix + '.h5'
+    cfsave = RESULTS_DIR + DATASET_NAME + '_nunez_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
 
     print("Loading data from saved files.")
     train_data_ = np.load(train_data_file_)
@@ -636,7 +612,7 @@ def run_keras_nunez_model(loso_, run_suffix):
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     print("Input Shape = %s " % (ishape, ))
 
-    tensorboard = TensorBoard(log_dir=OUTPUT_SAVES, histogram_freq=0,
+    tensorboard = TensorBoard(log_dir=RESULTS_DIR, histogram_freq=0,
                               write_graph=True, write_images=True)
     training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn,
                                            ishape, list_idxes, AUGMENTATIONS)
@@ -672,7 +648,7 @@ def run_keras_nunez_model(loso_, run_suffix):
     print("Start training")
     history_cnn = conv_model.fit_generator(generator=training_generator_cnn,
                                            epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
-                                           shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
+                                           shuffle=False, use_multiprocessing=MULTI_CPU,
                                            callbacks=[tensorboard])
 
     print(datetime.now())
@@ -738,7 +714,7 @@ def run_keras_nunez_model(loso_, run_suffix):
     print("Start training")
     history_rnn = nunez_model.fit_generator(generator=training_generator_rnn,
                                             epochs=int(NUM_EPOCHS*5), validation_data=(test_data_, test_labels_),
-                                            shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
+                                            shuffle=False, use_multiprocessing=MULTI_CPU,
                                             callbacks=[tensorboard])
 
     print(datetime.now())
@@ -816,13 +792,13 @@ def print_summary():
     print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| " + DATASET_NAME + " " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
-    print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
     print("| Final Single Results ")
     print("| ", end=" ")
     for res in RESULTS:
         print("%.2f |" % res, end=" ")
     print("")
     if TRAIN_MODELS[0] == "ConvRNN":
+        print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
         print("| CNN Single Results ")
         print("| ", end=" ")
         for res in CNN_RESULTS:
@@ -885,12 +861,14 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
-# DIRECTORY = "./joints/"
-# UTKLABELSFILE = "./actionLabel.txt"
+DIRECTORY = "./joints/"
+UTKLABELSFILE = "./actionLabel.txt"
+# MULTI_CPU = True
 # DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
 # UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+MULTI_CPU = False
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
@@ -906,7 +884,7 @@ RNN_BATCH_SIZE = 16
 K.set_epsilon(1e-06)
 
 ITERATIONS = 1
-NUM_EPOCHS = 1
+NUM_EPOCHS = 100
 AUGMENTATIONS = [
     'none',
     # "scale_shift",
@@ -923,7 +901,7 @@ OPTIMIZER = [
     # "AdaDelta"
 ]
 TRAIN_MODELS = [
-    'CNN',
+    # 'CNN',
     # 'LSTM',
     # 'ConvRNN'
 ]
@@ -937,6 +915,10 @@ scalerMinMax = MinMaxScaler(feature_range=(-1, 1))
 actionLabels = open(UTKLABELSFILE, "r")
 content = actionLabels.readlines()
 actionLabels.close()
+
+RESULTS_DIR = OUTPUT_SAVES + DATASET_NAME + "." + datetime.today().strftime('%d-%m-%Y') + "/"
+if not os.path.exists(RESULTS_DIR):
+    os.makedirs(RESULTS_DIR)
 
 for model in TRAIN_MODELS:
     for run_num in np.arange(ITERATIONS):

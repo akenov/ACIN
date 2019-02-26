@@ -618,6 +618,9 @@ CLMNS_LABL_FIN = [
 
 VALID_LABELS = ["reach", "grab", "moveObject", "place"]
 
+# 25.02.2019
+# ONLY 41 samples are valid - redownload the set!!
+
 # Total of 50 files
 EXPR_SET = [
     51,  1,  2,  4,  5,  6,  7,  9, 10,

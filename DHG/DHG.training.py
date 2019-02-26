@@ -661,13 +661,13 @@ def print_summary():
     print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| " + DATASET_NAME + " " + model + " AVERAGE ACCURACY %.2f " % (np.sum(results_arr)/results_len))
-    print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
     print("| Final Single Results ")
     print("| ", end=" ")
     for res in RESULTS:
         print("%.2f |" % res, end=" ")
     print("")
     if TRAIN_MODELS[0] == "ConvRNN":
+        print("| CNN AVERAGE ACCURACY %.2f " % (np.sum(cnn_results_arr)/results_len))
         print("| CNN Single Results ")
         print("| ", end=" ")
         for res in CNN_RESULTS:
