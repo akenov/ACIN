@@ -11,7 +11,7 @@ from keras import backend as K
 from keras import regularizers
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Reshape, Permute
-from keras.layers import Conv2D, MaxPooling2D, LSTM, Masking
+from keras.layers import Conv2D, MaxPooling2D, LSTM, Masking, BatchNormalization
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from keras.callbacks import TensorBoard
 from sklearn.utils import shuffle
@@ -160,21 +160,18 @@ def load_from_fileset(fileset_):
     return np.asarray(data_), np.asarray(labels_)
 
 
-def run_keras_cnn_model(loso_, epochs_n, run_suffix, aug_list):
+def run_keras_cnn_model(loso_, run_suffix):
     modelname = 'DHG CNN LOSO ' + loso_
-    batch_size_base = 5
-    # regul_val = 0.015
-    augmentations_ = aug_list
 
     train_data_file_ = DATASET_NAME + ".train." + loso_ + ".data.npy"
     # train_labels_file_ = DATASET_NAME + ".train." + loso_ + ".labels.npy"
     test_data_file_ = DATASET_NAME + ".test." + loso_ + ".data.npy"
     test_labels_file_ = DATASET_NAME + ".test." + loso_ + ".labels.npy"
     generator_type_train = 'train.' + loso_
-    histsave = OUTPUT_SAVES + DATASET_NAME + '.mnistcnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    scoresave = OUTPUT_SAVES + DATASET_NAME + '.mnistcnn_scores.' + loso_ + '.' + run_suffix + '.save'
-    weightsave = OUTPUT_SAVES + DATASET_NAME + '.mnistcnn_weights.' + loso_ + '.' + run_suffix + '.h5'
-    cfsave = OUTPUT_SAVES + DATASET_NAME + '.mnistcnn_confusion_matrix.' + loso_ + '.' + run_suffix + '.save'
+    histsave = RESULTS_DIR + DATASET_NAME + '.mnistcnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
+    scoresave = RESULTS_DIR + DATASET_NAME + '.mnistcnn_scores.' + loso_ + '.' + run_suffix + '.save'
+    weightsave = RESULTS_DIR + DATASET_NAME + '.mnistcnn_weights.' + loso_ + '.' + run_suffix + '.h5'
+    cfsave = RESULTS_DIR + DATASET_NAME + '.mnistcnn_confusion_matrix.' + loso_ + '.' + run_suffix + '.save'
 
     print("Loading data from saved files.")
     train_data_ = np.load(train_data_file_)
@@ -182,38 +179,39 @@ def run_keras_cnn_model(loso_, epochs_n, run_suffix, aug_list):
     test_data_ = np.load(test_data_file_)
     test_labels_ = np.load(test_labels_file_)
 
-    list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
-    batch_size_aug = len(augmentations_) * batch_size_base
+    list_idxes = np.arange(0, len(AUGMENTATIONS) * train_data_.shape[0], 1)
+    batch_size_aug = len(AUGMENTATIONS) * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-    # print("Input Shape = %s " % (ishape, ))
+    print("Input Shape = %s " % (ishape, ))
 
-    tensorboard = TensorBoard(log_dir='.', histogram_freq=0,
-                              write_graph=True, write_images=False)
-
-    # Generators
-    training_generator = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug, ishape, list_idxes, augmentations_)
+    tensorboard = TensorBoard(log_dir=RESULTS_DIR, histogram_freq=0,
+                              write_graph=True, write_images=True)
+    training_generator = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug,
+                                       ishape, list_idxes, AUGMENTATIONS)
 
     cnn_model = Sequential()
-    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=ishape))
-    cnn_model.add(Conv2D(64, (3, 3), activation='relu'))
+
+    cnn_model.add(BatchNormalization(input_shape=ishape))
+    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    cnn_model.add(Dropout(0.25))
+    cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
     cnn_model.add(Flatten())
-    cnn_model.add(Dense(128, activation='relu'))
-    cnn_model.add(Dropout(0.5))
+    cnn_model.add(Dense(128, activation='relu', use_bias=False))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
     cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     cnn_model.compile(loss=keras.losses.categorical_crossentropy,
-                      #optimizer=keras.optimizers.Adadelta(),
-                      optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
+                      optimizer=get_optimizer(),
                       metrics=['accuracy'])
 
     cnn_model.summary()
     print(datetime.now())
     print("Start training")
     history = cnn_model.fit_generator(generator=training_generator,
-                                      epochs=epochs_n,
-                                      shuffle=False, use_multiprocessing=False,  # change on Linux
+                                      epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
+                                      shuffle=False, use_multiprocessing=MULTI_CPU,
                                       callbacks=[tensorboard])
 
     # history = model.fit(train_data, train_labels,
@@ -260,21 +258,18 @@ def run_keras_cnn_model(loso_, epochs_n, run_suffix, aug_list):
     return
 
 
-def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
+def run_keras_lstm_model(loso_, run_suffix):
     modelname = 'DHG LSTM LOSO #' + loso_[4:]
-    batch_size_base = 5
-    regul_val = 0.015
-    augmentations_ = aug_list
 
     train_data_file_ = "DHG.train." + loso_ + ".data.npy"
     # train_labels_file_ = "DHG.train." + loso_ + ".labels.npy"
     test_data_file_ = "DHG.test." + loso_ + ".data.npy"
     test_labels_file_ = "DHG.test." + loso_ + ".labels.npy"
     generator_type_train = 'train.' + loso_
-    histsave = OUTPUT_SAVES + 'dhg_lstm_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    scoresave = OUTPUT_SAVES + 'dhg_lstm_scores.' + loso_ + '.' + run_suffix + '.save'
-    weightsave = OUTPUT_SAVES + 'dhg_lstm_weights_' + loso_ + '.' + run_suffix + '.h5'
-    cfsave = OUTPUT_SAVES + 'dhg_lstm_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
+    histsave = RESULTS_DIR + 'dhg_lstm_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
+    scoresave = RESULTS_DIR + 'dhg_lstm_scores.' + loso_ + '.' + run_suffix + '.save'
+    weightsave = RESULTS_DIR + 'dhg_lstm_weights_' + loso_ + '.' + run_suffix + '.h5'
+    cfsave = RESULTS_DIR + 'dhg_lstm_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
 
     print("Loading data from saved files.")
     train_data_ = np.load(train_data_file_)
@@ -282,31 +277,27 @@ def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
     test_data_ = np.load(test_data_file_)
     test_labels_ = np.load(test_labels_file_)
 
-    list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
-    batch_size_aug = len(augmentations_) * batch_size_base
+    list_idxes = np.arange(0, len(AUGMENTATIONS) * train_data_.shape[0], 1)
+    batch_size_aug = len(AUGMENTATIONS) * RNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-    # print("Input Shape = %s " % (ishape,))
+    print("Input Shape = %s " % (ishape,))
 
-    # Generators
-    training_generator = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug, ishape, list_idxes, augmentations_)
-
-    tensorboard = TensorBoard(log_dir='.', histogram_freq=0,
-                              write_graph=True, write_images=False)
+    training_generator = DataGenerator(DATASET_NAME, generator_type_train,
+                                       batch_size_aug, ishape, list_idxes, AUGMENTATIONS)
+    tensorboard = TensorBoard(log_dir=RESULTS_DIR, histogram_freq=0,
+                              write_graph=True, write_images=True)
 
     lstm_model = Sequential()
-    lstm_model.add(Permute((2, 1, 3), input_shape=ishape))
-    permute_shape = lstm_model.layers[0].output_shape
-    resh_dim1 = permute_shape[2]
-    resh_dim2 = permute_shape[1] * permute_shape[3]
-    resh_shape = (resh_dim1, resh_dim2)
-    lstm_model.add(Reshape(resh_shape))
-    lstm_model.add(LSTM(128, input_shape=[batch_size_aug, resh_dim1, resh_dim2], stateful=False, unroll=True, kernel_regularizer=regularizers.l2(regul_val)))
-    lstm_model.add(Dense(128, activation='relu'))
-    lstm_model.add(Dropout(0.5))
+    resh_shape = (test_data_.shape[1], test_data_.shape[2] * test_data_.shape[3])
+    lstm_model.add(Reshape(resh_shape, input_shape=ishape))
+    lstm_model.add(Masking(mask_value=0.0, input_shape=lstm_model.layers[-1].output_shape))
+    lstm_model.add(BatchNormalization(axis=2))
+    lstm_model.add(LSTM(128, return_sequences=True, stateful=False))
+    lstm_model.add(LSTM(64, stateful=False))
     lstm_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     lstm_model.compile(loss=keras.losses.categorical_crossentropy,
-                       optimizer=keras.optimizers.Adadelta(),
+                       optimizer=get_optimizer(),
                        metrics=['accuracy'])
 
     lstm_model.summary()
@@ -319,8 +310,8 @@ def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
     #                          validation_data=(test_data, test_labels))
 
     history = lstm_model.fit_generator(generator=training_generator,
-                                       epochs=epochs_n,
-                                       shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
+                                       epochs=4*NUM_EPOCHS,
+                                       shuffle=False, use_multiprocessing=MULTI_CPU,
                                        callbacks=[tensorboard])
 
     print(datetime.now())
@@ -362,133 +353,20 @@ def run_keras_lstm_model(loso_, epochs_n, run_suffix, aug_list):
     return
 
 
-def run_keras_convrnn_model(loso_, epochs_n, run_suffix, aug_list):
-    modelname = 'DHG ConvRNN LOSO #' + loso_[4:]
-    batch_size_base = 5
-    regul_val = 0.015
-    augmentations_ = aug_list
-
-    train_data_file_ = "DHG.train." + loso_ + ".data.npy"
-    # train_labels_file_ = "DHG.train." + loso_ + ".labels.npy"
-    test_data_file_ = "DHG.test." + loso_ + ".data.npy"
-    test_labels_file_ = "DHG.test." + loso_ + ".labels.npy"
-    generator_type_train = 'train.' + loso_
-    histsave = OUTPUT_SAVES + 'dhg_convrnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    weightsave = OUTPUT_SAVES + 'dhg_convrnn_weights_' + loso_ + '.' + run_suffix + '.h5'
-    cfsave = OUTPUT_SAVES + 'dhg_convrnn_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
-
-    print("Loading data from saved files.")
-    train_data_ = np.load(train_data_file_)
-    # train_labels_ = np.load(train_labels_file_)
-    test_data_ = np.load(test_data_file_)
-    test_labels_ = np.load(test_labels_file_)
-
-    list_idxes = np.arange(0, len(augmentations_) * train_data_.shape[0], 1)
-    batch_size_aug = len(augmentations_) * batch_size_base
-    ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
-    # print("Input Shape = %s " % (ishape, ))
-
-    tensorboard = TensorBoard(log_dir='.', histogram_freq=0,
-                              write_graph=True, write_images=False)
-
-    # Generators
-    training_generator = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug, ishape, list_idxes, augmentations_)
-
-    convrnn_model = Sequential()
-    convrnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, padding='same', kernel_regularizer=regularizers.l2(regul_val)))
-    convrnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # model.add(Dropout(0.5))
-    convrnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', kernel_regularizer=regularizers.l2(regul_val)))
-    convrnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # model.add(Dropout(0.5))
-    convrnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', kernel_regularizer=regularizers.l2(regul_val)))
-    convrnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # model.add(Dropout(0.5))
-    # CNN part
-    # epochs_n = 100
-    # model.add(Dense(300))
-    # model.add(Dense(100))
-
-    # for layer in convrnn_model.layers:
-    #     print(layer.output_shape)
-
-    # RNN part
-    convrnn_model.add(Permute((2, 1, 3)))
-    print(convrnn_model.layers[-1].output_shape)
-    convrnn_model.add(Reshape((62, 200)))
-    print(convrnn_model.layers[-1].output_shape)
-    convrnn_model.add(LSTM(100, return_sequences=True, batch_input_shape=(100, 62, 200), kernel_regularizer=regularizers.l2(regul_val)))
-    # model.add(Dropout(0.5))
-    convrnn_model.add(Flatten())
-    convrnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
-
-    convrnn_model.compile(loss=keras.losses.categorical_crossentropy,
-                          optimizer=keras.optimizers.Adadelta(),
-                          metrics=['accuracy'])
-
-    convrnn_model.summary()
-    print(datetime.now())
-    print("Start training")
-    history = convrnn_model.fit_generator(generator=training_generator,
-                                          epochs=epochs_n,
-                                          shuffle=False, use_multiprocessing=True,
-                                          callbacks=[tensorboard])
-
-    # history = model.fit(train_data, train_labels,
-    #                     batch_size=batch_size_aug,
-    #                     epochs=epochs_n, verbose=1,
-    #                     validation_data=(test_data, test_labels))
-
-    print(datetime.now())
-    print(test_data_.shape)
-    scores = convrnn_model.evaluate(test_data_, test_labels_, batch_size=batch_size_aug)
-    print(datetime.now())
-
-    print("# KERAS MODEL: " + modelname + " # # # ")
-    print('Test loss: %.4f' % scores[0])
-    print('Test accuracy: %.3f %%' % (scores[1] * 100))
-    pred_labels = convrnn_model.predict(test_data_, batch_size=batch_size_aug)
-    # print("Prediction matrix data:")
-    # print(pred_labels.shape)
-    # print(pred_labels)
-    # print(datetime.now())
-
-    with open(histsave, 'wb') as file_pi:
-        pickle.dump(history.history, file_pi)
-        print("Saved training history %s" % histsave)
-
-    convrnn_model.save(weightsave)
-    print("Saved model weights to %s" % weightsave)
-
-    cnf_matrix = confusion_matrix(test_labels_.argmax(axis=1), pred_labels.argmax(axis=1))
-    cnf_matrix_proc = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
-    cnf_matrix_proc = np.multiply(cnf_matrix_proc, 100)
-    print(" CONFUSION MATRIX in % ")
-    print(cnf_matrix_proc)
-    with open(cfsave, 'wb') as file_pi:
-        pickle.dump(cnf_matrix_proc, file_pi)
-        print("Saved confusion matrix to %s" % cfsave)
-    print("# KERAS MODEL: " + modelname + " # # # ")
-    print("Closing Keras/TF Session")
-    keras.backend.clear_session()
-    return
-
-
-def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
+def run_keras_nunez_model(loso_, run_suffix):
     modelname = DATASET_NAME + ' Nunez LOSO #' + loso_[4:]
-    augmentations_ = aug_list
 
     train_data_file_ = DATASET_NAME + ".train." + loso_ + ".data.npy"
     # train_labels_file_ = DATASET_NAME + ".train." + loso_ + ".labels.npy"
     test_data_file_ = DATASET_NAME + ".test." + loso_ + ".data.npy"
     test_labels_file_ = DATASET_NAME + ".test." + loso_ + ".labels.npy"
     generator_type_train = 'train.' + loso_
-    cnn_histsave = OUTPUT_SAVES + DATASET_NAME + '_nunez_cnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    rnn_histsave = OUTPUT_SAVES + DATASET_NAME + '_nunez_rnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
-    cnn_scoresave = OUTPUT_SAVES + DATASET_NAME + '_nunez_cnn_scores.' + loso_ + '.' + run_suffix + '.save'
-    rnn_scoresave = OUTPUT_SAVES + DATASET_NAME + '_nunez_rnn_scores.' + loso_ + '.' + run_suffix + '.save'
-    rnn_weightsave = OUTPUT_SAVES + DATASET_NAME + '_nunez_weights_' + loso_ + '.' + run_suffix + '.h5'
-    cfsave = OUTPUT_SAVES + DATASET_NAME + '_nunez_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
+    cnn_histsave = RESULTS_DIR + DATASET_NAME + '_nunez_cnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
+    rnn_histsave = RESULTS_DIR + DATASET_NAME + '_nunez_rnn_trainHistoryDict.' + loso_ + '.' + run_suffix + '.save'
+    cnn_scoresave = RESULTS_DIR + DATASET_NAME + '_nunez_cnn_scores.' + loso_ + '.' + run_suffix + '.save'
+    rnn_scoresave = RESULTS_DIR + DATASET_NAME + '_nunez_rnn_scores.' + loso_ + '.' + run_suffix + '.save'
+    rnn_weightsave = RESULTS_DIR + DATASET_NAME + '_nunez_weights_' + loso_ + '.' + run_suffix + '.h5'
+    cfsave = RESULTS_DIR + DATASET_NAME + '_nunez_confusion_matrix_' + loso_ + '.' + run_suffix + '.save'
 
     print("Loading data from saved files.")
     train_data_ = np.load(train_data_file_)
@@ -497,45 +375,42 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print("Train Data Shape = %s " % (train_data_.shape,))
     test_labels_ = np.load(test_labels_file_)
 
-    list_idxes = np.arange(len(augmentations_) * train_data_.shape[0])
-    print("Indexes Length: %d " % list_idxes.shape[0])
+    list_idxes = np.arange(len(AUGMENTATIONS) * train_data_.shape[0])
     batch_size_aug_cnn = len(AUGMENTATIONS) * CNN_BATCH_SIZE
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     print("Input Shape = %s " % (ishape, ))
 
-    tensorboard = TensorBoard(log_dir=OUTPUT_SAVES, histogram_freq=0,
+    tensorboard = TensorBoard(log_dir=RESULTS_DIR, histogram_freq=0,
                               write_graph=True, write_images=True)
-
-    # Generators
     training_generator_cnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_cnn,
-                                           ishape, list_idxes, augmentations_)
+                                           ishape, list_idxes, AUGMENTATIONS)
 
     conv_model = Sequential()
-    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', input_shape=ishape))
+    conv_model.add(BatchNormalization(input_shape=ishape))
+    conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same'))
+    conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same'))
+    conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # CNN part
     conv_model.add(Dropout(COEFF_DROPOUT))
-    conv_model.add(Dense(300))
+    conv_model.add(Dense(300, activation='relu', use_bias=False))
     conv_model.add(Dropout(COEFF_DROPOUT))
-    conv_model.add(Dense(100))
+    conv_model.add(Dense(100, activation='relu', use_bias=False))
     conv_model.add(Flatten())
     conv_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     conv_model.compile(loss=keras.losses.categorical_crossentropy,
-                       optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
+                       optimizer=get_optimizer(),
                        metrics=['accuracy'])
-
     conv_model.summary()
     print(datetime.now())
     print("Start training")
     history_cnn = conv_model.fit_generator(generator=training_generator_cnn,
-                                           epochs=epochs_n, validation_data=(test_data_, test_labels_),
-                                           shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
+                                           epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
+                                           shuffle=False, use_multiprocessing=MULTI_CPU,
                                            callbacks=[tensorboard])
 
     print(datetime.now())
@@ -560,21 +435,21 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     conv_model.layers.pop()  # Dense(300)
 
     # RNN part
-
     batch_size_aug_rnn = len(AUGMENTATIONS) * RNN_BATCH_SIZE
-
-    training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn, ishape, list_idxes, augmentations_)
+    training_generator_rnn = DataGenerator(DATASET_NAME, generator_type_train, batch_size_aug_rnn,
+                                           ishape, list_idxes, AUGMENTATIONS)
 
     nunez_model = Sequential()
-    nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', input_shape=ishape, padding='same',
-                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2))) #batch_input_shape=bi_shape,
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
-    nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same',
-                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
-    nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same',
-                           kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
-    nunez_model.add(MaxPooling2D(pool_size=(2, 2)))
+    nunez_model.add(BatchNormalization(input_shape=ishape))
+    nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False,
+                           trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
+    nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False,
+                           trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
+    nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False,
+                           trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
+    nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
 
     nunez_model.set_weights(conv_model.get_weights())
 
@@ -583,22 +458,23 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     nunez_model.add(Reshape((18, 200)))
     # print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Masking(mask_value=0.0, input_shape=nunez_model.layers[-1].output_shape))
-    # nunez_model.add(BatchNormalization(axis=2))
-    nunez_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2), stateful=False))
+    nunez_model.add(BatchNormalization())
+    nunez_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2),
+                         stateful=False, use_bias=False))
     nunez_model.add(Dropout(COEFF_DROPOUT))
     # nunez_model.add(Flatten())
     nunez_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     nunez_model.compile(loss=keras.losses.categorical_crossentropy,
-                        optimizer=keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0),
+                        optimizer=get_optimizer(),
                         metrics=['accuracy'])
 
     nunez_model.summary()
     print(datetime.now())
     print("Start training")
     history_rnn = nunez_model.fit_generator(generator=training_generator_rnn,
-                                            epochs=int(epochs_n*5), validation_data=(test_data_, test_labels_),
-                                            shuffle=False, use_multiprocessing=False,  # CHANGE ON RACER!
+                                            epochs=NUM_EPOCHS*5, validation_data=(test_data_, test_labels_),
+                                            shuffle=False, use_multiprocessing=MULTI_CPU,
                                             callbacks=[tensorboard])
 
     print(datetime.now())
@@ -638,6 +514,14 @@ def run_keras_nunez_model(loso_, epochs_n, run_suffix, aug_list):
     print("Closing Keras/TF Session")
     keras.backend.clear_session()
     return
+
+
+def get_optimizer():
+    print("Using " + OPTIMIZER[0] + " optimizer")
+    if OPTIMIZER[0] == "Adam":
+        return keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, decay=0.0)
+    elif OPTIMIZER[0] == "AdaDelta":
+        return keras.optimizers.Adadelta(lr=0.1, rho=0.993, decay=0.0)
 
 
 def print_summary():
@@ -700,26 +584,26 @@ subject_list = [
 ]
 
 batch_names = [
-    ('kfold0', 'subject_1/'),
-    ('kfold0', 'subject_2/'),
-    ('kfold0', 'subject_3/'),
-    ('kfold0', 'subject_4/'),
+    ('kfold2', 'subject_1/'),
+    ('kfold2', 'subject_2/'),
+    ('kfold2', 'subject_3/'),
+    ('kfold2', 'subject_4/'),
     ('kfold2', 'subject_5/'),
     ('kfold2', 'subject_6/'),
-    ('kfold2', 'subject_7/'),
-    ('kfold2', 'subject_8/'),
-    ('kfold4', 'subject_9/'),
-    ('kfold4', 'subject_10/'),
-    ('kfold4', 'subject_11/'),
-    ('kfold4', 'subject_12/'),
-    ('kfold6', 'subject_13/'),
-    ('kfold6', 'subject_14/'),
-    ('kfold6', 'subject_15/'),
-    ('kfold6', 'subject_16/'),
-    ('kfold8', 'subject_17/'),
-    ('kfold8', 'subject_18/'),
-    ('kfold8', 'subject_19/'),
-    ('kfold8', 'subject_20/')
+    ('kfold0', 'subject_7/'),
+    ('kfold0', 'subject_8/'),
+    ('kfold2', 'subject_9/'),
+    ('kfold2', 'subject_10/'),
+    ('kfold2', 'subject_11/'),
+    ('kfold2', 'subject_12/'),
+    ('kfold2', 'subject_13/'),
+    ('kfold2', 'subject_14/'),
+    ('kfold2', 'subject_15/'),
+    ('kfold2', 'subject_16/'),
+    ('kfold2', 'subject_17/'),
+    ('kfold2', 'subject_18/'),
+    ('kfold2', 'subject_19/'),
+    ('kfold2', 'subject_20/')
 ]
 
 LABELS = [
@@ -743,19 +627,22 @@ DATASET_NAME = 'DHG'
 NUM_CLASSES = 14
 MAX_WIDTH = 150
 NUM_JOINTS = 22
+STARTMARK = "_"
 
 # PARAMETERS #
 # FLD_SLSH = '/'  # USE for *NIX
-FLD_SLSH = '\\'  # USE for Windows
-STARTMARK = "_"
-DHGFOLDER = "D:\\!DA-20092018\\DHG2016/"
 # DHGFOLDER = "./DHG2016/"
-# DHGFOLDER = "/home/antonk/racer/DHG_dataset/DHG2016/"
+# MULTI_CPU = True
+
+FLD_SLSH = '\\'  # USE for Windows
+DHGFOLDER = "D:\\!DA-20092018\\DHG2016/"
+MULTI_CPU = False
+
 allfiles_list = glob.glob(DHGFOLDER + "/*/finger_1/*/*/skeleton_world.txt")
 print("DHG14 - working only with FINGER 1")
 info_list_file = DHGFOLDER + "/informations_troncage_sequences.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
-OUTPUT_SAVES = "/saves/DHG/"
+OUTPUT_SAVES = "./"
 EXTEND_ACTIONS = True
 USE_SLIDINGWINDOW = True
 USE_SCALER = False
@@ -772,18 +659,18 @@ ITERATIONS = 1
 NUM_EPOCHS = 100
 AUGMENTATIONS = [
     'none',
-    "scale_shift",
+    # "scale_shift",
     # 'scale',
-    # 'shift',
+    # 'shift_gauss_xy',
     # 'noise',
-    'subsample',
-    'interpol',
+    # 'subsample',
+    # 'interpol',
     # 'translate',
     # 'scale_translate'
 ]
 OPTIMIZER = [
-    # "Adam",
-    "AdaDelta"
+    "Adam",
+    # "AdaDelta"
 ]
 TRAIN_MODELS = [
     # 'CNN',
@@ -800,11 +687,21 @@ for nseq in np.arange(0, len(frames_info), 1):
     SEQ_INFO[row[0]-1, row[1]-1, row[2]-1, row[3]-1, 0] = row[4]
     SEQ_INFO[row[0]-1, row[1]-1, row[2]-1, row[3]-1, 1] = row[5]
 
+RESULTS_DIR = OUTPUT_SAVES + DATASET_NAME + "." + datetime.today().strftime('%d-%m-%Y') + "/"
+if not os.path.exists(RESULTS_DIR):
+    os.makedirs(RESULTS_DIR)
+
 for model in TRAIN_MODELS:
     for run in np.arange(0, ITERATIONS, 1):
         RESULTS = []
         CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
+            #     #     #      #      #      #      #      #      #      #      #
+            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
+            if key != "kfold0":
+                continue
+            #     #     #      #      #      #      #      #      #      #      #
+
             # for subject in subject_list:
             # loso_id = subject.split('_')[1]
             # loso = "loso" + loso_id[:len(loso_id)-1]

@@ -188,6 +188,17 @@ class DataGenerator(keras.utils.Sequence):
         elif augtype == 'shift_gauss_xy':
             shifted = self.shift_gauss_xy_augmentation(odata)
             return shifted
+        elif augtype == 'scale_shift':
+            scaled = self.scale_augmentation(odata)
+            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
+            return shifted_scaled
+        elif augtype == 'translate':
+            translated = self.translate_augmentation(odata)
+            return translated
+        elif augtype == 'scale_translate':
+            translated = self.translate_augmentation(odata)
+            translated_scaled = self.shift_uni_xyz_augmentation(translated)
+            return translated_scaled
         elif augtype == 'noise':
             scaled = self.scale_augmentation(odata)
             shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
@@ -203,17 +214,7 @@ class DataGenerator(keras.utils.Sequence):
             shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
             interpolated = self.interpolate_augmentation(shifted_scaled)
             return interpolated
-        elif augtype == 'scale_shift':
-            scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
-            return shifted_scaled
-        elif augtype == 'translate':
-            translated = self.translate_augmentation(odata)
-            return translated
-        elif augtype == 'scale_translate':
-            translated = self.translate_augmentation(odata)
-            translated_scaled = self.shift_uni_xyz_augmentation(translated)
-            return translated_scaled
+
         else:
             return odata
 

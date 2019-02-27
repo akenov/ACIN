@@ -44,7 +44,6 @@ def extend_sequences(sequence_, avg_length=10):
 
 
 def skeleton_reshape(sequence_):
-    # new_sequence = np.zeros([NUM_JOINTS, MAX_WIDTH, 3])
     new_sequence = np.zeros([MAX_WIDTH, NUM_JOINTS, 3])
     sequence_length = sequence_.shape[0]
     for frame_id in range(sequence_length):
@@ -395,36 +394,31 @@ def run_keras_cnn_model(loso_, run_suffix):
 
     cnn_model = Sequential()
 
-    cnn_model.add(BatchNormalization(input_shape=ishape))
-    cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
-    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # cnn_model.add(BatchNormalization())
-    cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
-    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # cnn_model.add(BatchNormalization())
-    cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
-    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    cnn_model.add(Dropout(COEFF_DROPOUT))
-    # cnn_model.add(BatchNormalization())
-    cnn_model.add(Dense(300, activation='relu', use_bias=False))
-    cnn_model.add(Dropout(COEFF_DROPOUT))
-    # cnn_model.add(BatchNormalization())
-    cnn_model.add(Dense(100, activation='relu', use_bias=False))
-    cnn_model.add(Flatten())
-    cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
-
-    # Old MNIST Model with single Dense layer
     # cnn_model.add(BatchNormalization(input_shape=ishape))
-    # cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
-    # cnn_model.add(BatchNormalization())
-    # cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
+    # cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
+    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    # cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
+    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    # cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
     # cnn_model.add(Dropout(COEFF_DROPOUT))
-    # cnn_model.add(Flatten())
-    # cnn_model.add(BatchNormalization())
-    # cnn_model.add(Dense(128, activation='relu', use_bias=False))
+    # cnn_model.add(Dense(300, activation='relu', use_bias=False))
     # cnn_model.add(Dropout(COEFF_DROPOUT))
+    # cnn_model.add(Dense(100, activation='relu', use_bias=False))
+    # cnn_model.add(Flatten())
     # cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
+
+    # Old MNIST Model with single Dense layer
+    cnn_model.add(BatchNormalization(input_shape=ishape))
+    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(Flatten())
+    cnn_model.add(Dense(128, activation='relu', use_bias=False))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     cnn_model.compile(loss=keras.losses.categorical_crossentropy,
                       optimizer=get_optimizer(),
@@ -434,7 +428,7 @@ def run_keras_cnn_model(loso_, run_suffix):
     print(datetime.now())
     print("Start training")
     history = cnn_model.fit_generator(generator=training_generator,
-                                      epochs=NUM_EPOCHS,
+                                      epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
                                       shuffle=False, use_multiprocessing=MULTI_CPU,
                                       callbacks=[tensorboard])
 
@@ -507,7 +501,6 @@ def run_keras_lstm_model(loso_, run_suffix):
     ishape = (test_data_.shape[1], test_data_.shape[2], test_data_.shape[3])
     print("Input Shape = %s " % (ishape,))
 
-    # Generators
     training_generator = DataGenerator(DATASET_NAME, generator_type_train,
                                        batch_size_aug, ishape, list_idxes, AUGMENTATIONS)
 
@@ -524,7 +517,7 @@ def run_keras_lstm_model(loso_, run_suffix):
     lstm_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     lstm_model.compile(loss=keras.losses.categorical_crossentropy,
-                       optimizer=keras.optimizers.Adadelta(),
+                       optimizer=get_optimizer(),
                        metrics=['accuracy'])
 
     lstm_model.summary()
@@ -537,16 +530,12 @@ def run_keras_lstm_model(loso_, run_suffix):
     #                          validation_data=(test_data, test_labels))
 
     history = lstm_model.fit_generator(generator=training_generator,
-                                       epochs=4*NUM_EPOCHS,
+                                       epochs=4*NUM_EPOCHS, validation_data=(test_data_, test_labels_),
                                        shuffle=False, use_multiprocessing=MULTI_CPU,
                                        callbacks=[tensorboard])
 
     print(datetime.now())
-    # # print(test_data_.shape)
-    # test_data_, test_labels_ = trim_to_batch(test_data_, test_labels_, batch_size_aug)
-    # # print(test_data_.shape)
-    # test_data_ = test_data_.reshape((-1, timesteps_dim, features_dim))
-
+    print(test_data_.shape)
     scores = lstm_model.evaluate(test_data_, test_labels_, batch_size=batch_size_aug)
     print(datetime.now())
 
@@ -618,23 +607,18 @@ def run_keras_nunez_model(loso_, run_suffix):
                                            ishape, list_idxes, AUGMENTATIONS)
 
     conv_model = Sequential()
-
     conv_model.add(BatchNormalization(input_shape=ishape))
     conv_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(BatchNormalization())
     conv_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
-    conv_model.add(BatchNormalization())
     conv_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     conv_model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # CNN part
     conv_model.add(Dropout(COEFF_DROPOUT))
-    conv_model.add(BatchNormalization())
     conv_model.add(Dense(300, activation='relu', use_bias=False))
     conv_model.add(Dropout(COEFF_DROPOUT))
-    conv_model.add(BatchNormalization())
     conv_model.add(Dense(100, activation='relu', use_bias=False))
     conv_model.add(Flatten())
     conv_model.add(Dense(NUM_CLASSES, activation='softmax'))
@@ -682,11 +666,9 @@ def run_keras_nunez_model(loso_, run_suffix):
     nunez_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False,
                            trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
     nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
-    nunez_model.add(BatchNormalization())
     nunez_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False,
                            trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
     nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
-    nunez_model.add(BatchNormalization())
     nunez_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False,
                            trainable=CNN_TRAINABLE, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2)))
     nunez_model.add(MaxPooling2D(pool_size=(2, 2), trainable=CNN_TRAINABLE))
@@ -861,13 +843,13 @@ NUM_CLASSES = 10
 MAX_WIDTH = 120
 NUM_JOINTS = 20
 # EDITABLE PARAMETERS
-DIRECTORY = "./joints/"
-UTKLABELSFILE = "./actionLabel.txt"
+# DIRECTORY = "./joints/"
+# UTKLABELSFILE = "./actionLabel.txt"
 # MULTI_CPU = True
 # DIRECTORY = "/home/antonk/racer/UTKinect3D/joints/"
 # UTKLABELSFILE = "/home/antonk/racer/UTKinect3D/actionLabel.txt"
-# DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
-# UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
+DIRECTORY = "D:\\!DA-20092018\\UTKinectAction3D\\joints\\"
+UTKLABELSFILE = "D:\\!DA-20092018\\UTKinectAction3D\\actionLabel.txt"
 MULTI_CPU = False
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
@@ -901,7 +883,7 @@ OPTIMIZER = [
     # "AdaDelta"
 ]
 TRAIN_MODELS = [
-    # 'CNN',
+    'CNN',
     # 'LSTM',
     # 'ConvRNN'
 ]
