@@ -7,7 +7,7 @@ import os
 import numpy as np
 import itertools
 from datetime import datetime
-from keras import backend as K
+from keras import backend as k
 from keras import regularizers
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Reshape, Permute
@@ -19,7 +19,7 @@ from sklearn.metrics import confusion_matrix
 from DataGenerator import DataGenerator
 
 
-def extend_sequences(sequence_, avg_length=20):
+def extend_sequences(sequence_, avg_length=10):
     sequence_length = sequence_.shape[0]
     ext_factors = [0, 0.25, 0.5, 0.75]
     ext_step = len(ext_factors)
@@ -227,6 +227,7 @@ def run_keras_cnn_model(loso_, run_suffix):
     print("# KERAS MODEL: " + modelname + " # # # ")
     print('Test loss: %.4f' % scores[0])
     print('Test accuracy: %.3f %%' % (scores[1] * 100))
+    RESULTS.append(scores[1] * 100)
     pred_labels = cnn_model.predict(test_data_, batch_size=batch_size_aug)
     # print("Prediction matrix data:")
     # print(pred_labels.shape)
@@ -322,6 +323,7 @@ def run_keras_lstm_model(loso_, run_suffix):
     print("# KERAS MODEL: " + modelname + " # # # ")
     print('Test loss: %.4f' % scores[0])
     print('Test accuracy: %.3f %%' % (scores[1] * 100))
+    RESULTS.append(scores[1] * 100)
     pred_labels = lstm_model.predict(test_data_, batch_size=batch_size_aug)
     # print("Prediction matrix data:")
     # print(pred_labels.shape)
@@ -653,10 +655,10 @@ COEFF_DROPOUT = 0.6
 COEFF_REGULARIZATION_L2 = 0.015
 CNN_BATCH_SIZE = 50
 RNN_BATCH_SIZE = 16
-K.set_epsilon(1e-06)
+k.set_epsilon(1e-06)
 
 ITERATIONS = 1
-NUM_EPOCHS = 100
+NUM_EPOCHS = 1
 AUGMENTATIONS = [
     'none',
     # "scale_shift",
@@ -673,9 +675,9 @@ OPTIMIZER = [
     # "AdaDelta"
 ]
 TRAIN_MODELS = [
-    # 'CNN',
+    'CNN',
     # 'LSTM',
-    'ConvRNN'
+    # 'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -696,12 +698,6 @@ for model in TRAIN_MODELS:
         RESULTS = []
         CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
-            #     #     #      #      #      #      #      #      #      #      #
-            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
-            if key != "kfold0":
-                continue
-            #     #     #      #      #      #      #      #      #      #      #
-
             # for subject in subject_list:
             # loso_id = subject.split('_')[1]
             # loso = "loso" + loso_id[:len(loso_id)-1]
@@ -714,6 +710,13 @@ for model in TRAIN_MODELS:
             if USE_SLIDINGWINDOW:
                 print("| Sliding Window Length: %.2f" % COEFF_SLIDINGWINDOW)
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+
+            #     #     #      #      #      #      #      #      #      #      #
+            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
+            if key != "kfold0":
+                print("Skipping split " + key)
+                continue
+            #     #     #      #      #      #      #      #      #      #      #
 
             test_files = []
             for batch_pair in batch_group:
@@ -758,11 +761,11 @@ for model in TRAIN_MODELS:
 
             print("Training " + model + " model")
             if model == 'CNN':
-                run_keras_cnn_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_cnn_model(key, str(int(run + 1)))
             elif model == 'LSTM':
-                run_keras_lstm_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_lstm_model(key, str(int(run + 1)))
             elif model == 'ConvRNN':
-                run_keras_nunez_model(key, NUM_EPOCHS, str(int(run + 1)), AUGMENTATIONS)
+                run_keras_nunez_model(key, str(int(run + 1)))
             else:
                 print("Model unknown!")
 

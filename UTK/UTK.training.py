@@ -10,7 +10,7 @@ from datetime import datetime
 from DataGenerator import DataGenerator
 import keras
 from keras import regularizers
-from keras import backend as K
+from keras import backend as k
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Reshape, Permute, Activation
 from keras.layers import Conv2D, MaxPooling2D, LSTM, Masking, BatchNormalization
@@ -159,10 +159,10 @@ def process_sample(sample_name):
         walk_mean = np.mean(walk_sample, axis=0).reshape(1, -1)
         walk_mean_arr = matlib.repmat(walk_mean, walk_sample.shape[0], 1)
         walk_sample = np.subtract(walk_sample, walk_mean_arr)
-        walk_var = np.var(walk_sample, axis=0).reshape(1, -1)
-        walk_var = walk_var + np.multiply(np.ones(walk_var.shape), K.epsilon())
-        walk_sigma = np.sqrt(walk_var)
-        walk_sample = np.divide(walk_sample, walk_sigma)
+        # walk_var = np.var(walk_sample, axis=0).reshape(1, -1)
+        # walk_var = walk_var + np.multiply(np.ones(walk_var.shape), k.epsilon())
+        # walk_sigma = np.sqrt(walk_var)
+        # walk_sample = np.divide(walk_sample, walk_sigma)
         # print(scalerMinMax)
         # walk_sample = scalerStd.transform(walk_sample)
         # walk_sample = scalerMinMax.transform(walk_sample)
@@ -863,7 +863,7 @@ COEFF_DROPOUT = 0.6
 COEFF_REGULARIZATION_L2 = 0.015
 CNN_BATCH_SIZE = 50
 RNN_BATCH_SIZE = 16
-K.set_epsilon(1e-06)
+k.set_epsilon(1e-06)
 
 ITERATIONS = 1
 NUM_EPOCHS = 100
