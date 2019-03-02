@@ -1,0 +1,34 @@
+Have you done any specific preprocessing aside of typical normalization (scale -1 1, zero mean, etc)
+based on path name Action-Converted
+extendShortActions? is this padding or the interpolation augmentation?
+SlidingFrameSequence() - is this a sliding window over the action
+apply scale
+apply shift
+normalize AFTER augmentation? -	I have noticed the normalizeDataActions(actions) is called after the augmentations have been applied
+removeConfidenceAndExtractMask() - whats the purpose of the method?
+generateFeatureVectorsFromAction()  - whats the purpose of the method?
+usage of masks?
+
+self-implemented AdaDelta
+def adadelta(lr, tparams, grads, x, mask, y, cost, n_samp, max_lenght_feature):
+    """
+    An adaptive learning rate optimizer
+
+    Parameters
+    ----------
+    lr : Theano SharedVariable
+        Initial learning rate
+    tpramas: Theano SharedVariable
+        Model parameters
+    grads: Theano variable
+        Gradients of cost w.r.t to parameres
+    x: Theano variable
+        Model inputs
+    mask: Theano variable
+        Sequence mask
+    y: Theano variable
+        Targets
+    cost: Theano variable
+        Objective fucntion to minimize
+
+	f_grad_shared, f_update = adadelta(lr, tparams, grads, x, mask, y, cost,  n_samp, max_lenght_feature)
