@@ -22,6 +22,26 @@ from sklearn.utils import shuffle
 from sklearn.metrics import confusion_matrix
 
 
+def sliding_window_generator(sequence, label):
+    label = label.reshape([1, -1])
+    slided_window_samples = np.zeros([1, sequence.shape[0], sequence.shape[1], sequence.shape[2]])
+    slided_window_labels = np.zeros([1, label.shape[1]])
+
+    clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+    sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
+        .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+
+    for frame_id in range(sequence_clean.shape[0] - SLIDINGWINDOW_SIZE + 1):
+        window = sequence_clean[frame_id: frame_id+SLIDINGWINDOW_SIZE, :, :]
+        sequence_padded = np.pad(window, [(0, sequence.shape[0] - SLIDINGWINDOW_SIZE), (0, 0), (0, 0)],
+                                 mode='constant', constant_values=0)
+        slided_window_samples = np.append(slided_window_samples, sequence_padded.reshape(
+            [1, sequence.shape[0], sequence.shape[1], sequence.shape[2]]), axis=0)
+        slided_window_labels = np.append(slided_window_labels, label, axis=0)
+
+    return slided_window_samples[1:, :, :, :], slided_window_labels[1:, :]
+
+
 def load_from_file(list_of_files):
     fshape = [MAX_WIDTH, NUM_JOINTS, 3]
     fdapool = []
@@ -31,7 +51,7 @@ def load_from_file(list_of_files):
     for file in list_of_files:
         print("Loading experiment: " + file)
         fdata = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS).as_matrix()
-        flabel = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABL_FIN).as_matrix()
+        flabel = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE).as_matrix()
 
         # Subselect data corresponding to the labels of interest
         # max_len = 0 # read 229, thus 500 fits all augmentation schemes
@@ -487,7 +507,7 @@ def print_summary():
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
-    print("| COEFF_SLIDINGWINDOW: " + str(COEFF_SLIDINGWINDOW))
+    print("| COEFF_SLIDINGWINDOW: " + str(SLIDINGWINDOW_SIZE))
     print("| COEFF_DROPOUT: " + str(COEFF_DROPOUT))
     print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
@@ -576,7 +596,7 @@ CLMNS_JOINTS = [
     'elbowPosition0Z'
 ]
 
-CLMNS_LABL_FIN = [
+CLMNS_LABEL_FINE = [
     'fineAnnotation'
 ]
 
@@ -642,18 +662,18 @@ MAX_WIDTH = 500
 NUM_JOINTS = 22
 # PARAMETERS #
 
-EXPERIMENTS_DIR = "./AVCexperimentsData/"
-MULTI_CPU = True
-# EXPERIMENTS_DIR = "D:\\!DA-20092018\\AVCexperimentsData\\"
-# MULTI_CPU = False
+# EXPERIMENTS_DIR = "./AVCexperimentsData/"
+# MULTI_CPU = True
+EXPERIMENTS_DIR = "D:\\!DA-20092018\\AVCexperimentsData\\"
+MULTI_CPU = False
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
 # EXTEND_ACTIONS = True
-# USE_SLIDINGWINDOW = True
+USE_SLIDINGWINDOW = True
 # USE_SCALER = False
 CNN_TRAINABLE = True
 FRAMES_THRESHOLD = 13
-COEFF_SLIDINGWINDOW = 0.8
+SLIDINGWINDOW_SIZE = 80
 COEFF_DROPOUT = 0.6
 COEFF_REGULARIZATION_L2 = 0.015
 CNN_BATCH_SIZE = 50
@@ -661,7 +681,7 @@ RNN_BATCH_SIZE = 16
 k.set_epsilon(1e-06)
 
 ITERATIONS = 1
-NUM_EPOCHS = 100
+NUM_EPOCHS = 1
 AUGMENTATIONS = [
     'none',
     # "scale_shift",
@@ -678,9 +698,9 @@ OPTIMIZER = [
     # "AdaDelta"
 ]
 TRAIN_MODELS = [
-    # 'CNN',
+    'CNN',
     # 'LSTM',
-    'ConvRNN'
+    # 'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -726,6 +746,14 @@ for model in TRAIN_MODELS:
             else:
                 train_data, train_labels = load_from_file(train_files)
                 test_data, test_labels = load_from_file(test_files)
+
+                if USE_SLIDINGWINDOW:
+                    print("Generating sliding windows samples. This can take a while...")
+                    for sample_id in range(train_data.shape[0]):
+                        train_data_sliwin, train_labels_sliwin = sliding_window_generator(
+                            train_data[sample_id, :, :, :], train_labels[sample_id, :])
+                        train_data = np.append(train_data, train_data_sliwin, axis=0)
+                        train_labels = np.append(train_labels, train_labels_sliwin, axis=0)
 
                 train_data_fin, train_labels_fin = shuffle(train_data, train_labels, random_state=42)
                 test_data_fin, test_labels_fin = shuffle(test_data, test_labels, random_state=42)

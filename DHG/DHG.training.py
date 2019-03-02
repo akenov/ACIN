@@ -630,7 +630,7 @@ NUM_CLASSES = 14
 MAX_WIDTH = 150
 NUM_JOINTS = 22
 STARTMARK = "_"
-
+DHG_FINGER = "2"
 # PARAMETERS #
 # FLD_SLSH = '/'  # USE for *NIX
 # DHGFOLDER = "./DHG2016/"
@@ -640,8 +640,8 @@ FLD_SLSH = '\\'  # USE for Windows
 DHGFOLDER = "D:\\!DA-20092018\\DHG2016/"
 MULTI_CPU = False
 
-allfiles_list = glob.glob(DHGFOLDER + "/*/finger_1/*/*/skeleton_world.txt")
-print("DHG14 - working only with FINGER 1")
+allfiles_list = glob.glob(DHGFOLDER + "/*/finger_" + DHG_FINGER + "/*/*/skeleton_world.txt")
+print("DHG14 - working only with FINGER " + DHG_FINGER)
 info_list_file = DHGFOLDER + "/informations_troncage_sequences.txt"
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
@@ -720,7 +720,8 @@ for model in TRAIN_MODELS:
 
             test_files = []
             for batch_pair in batch_group:
-                for testfile in glob.glob(DHGFOLDER + "/*/finger_1/" + batch_pair[1] + "/*/skeleton_world.txt"):
+                for testfile in glob.glob(DHGFOLDER + "/*/finger_" + DHG_FINGER + "/"
+                                          + batch_pair[1] + "/*/skeleton_world.txt"):
                     test_files.append(testfile)
             train_files = allfiles_list[:]
             for testfile in test_files:
