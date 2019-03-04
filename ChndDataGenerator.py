@@ -6,13 +6,14 @@ from numpy import matlib
 from sklearn.utils import shuffle
 
 
-class DataGenerator(keras.utils.Sequence):
+class ChndDataGenerator(keras.utils.Sequence):
     """Generates data for Keras"""
-    def __init__(self, name_, type_, batch_size, dim, list_idxes, aug_types):
+    def __init__(self, name_, type_, batch_size, dim, list_idxes, aug_types, batch_factor_):
         """Initialization"""
         self.name = name_
         self.type = type_
-        self.batch_size = int(batch_size / len(aug_types))
+        # self.batch_size = int(batch_size / len(aug_types))
+        self.batch_size = int(batch_size / batch_factor_**2)
         self.dim = dim
         self.list_idxes = list_idxes
         self.aug_types = aug_types
@@ -20,14 +21,15 @@ class DataGenerator(keras.utils.Sequence):
         self.train_labels = np.load(self.name + '.' + self.type + '.labels.npy')
         self.train_data, self.train_labels = shuffle(self.train_data, self.train_labels)
         self.sigma = (0.1 / 4)
+        self.batch_factor = batch_factor_
 
     def __getitem__(self, index):
         """Generate one batch of data"""
         # Generate indexes of the batch
         indexes = self.list_idxes[index*self.batch_size:(index+1)*self.batch_size]
 
-        # print("Processing batch #%d" % index)
-        # print(indexes)
+        #print("Processing batch #%d" % index)
+        #print(indexes)
         # Generate data
         x, y = self.__data_generation(indexes)
 
@@ -43,7 +45,8 @@ class DataGenerator(keras.utils.Sequence):
     def __len__(self):
         """Denotes the number of batches per epoch"""
         #print("LEN method called %s " % self.type)
-        return int(np.floor(len(self.list_idxes) / (self.batch_size * len(self.aug_types))))
+        # return int(np.floor(len(self.list_idxes) / (self.batch_size * len(self.aug_types))))
+        return int(np.floor(len(self.list_idxes) / (self.batch_size ))* self.batch_factor**2)
 
     @staticmethod
     def scale_augmentation(odata):
@@ -53,36 +56,17 @@ class DataGenerator(keras.utils.Sequence):
         data_aug = np.multiply(odata, fa_scale)
         return data_aug
 
-    def shift_uni_xyz_augmentation(self, odata):
-        # print("Doing data shift augmentation.")
-        data_aug = np.zeros(odata.shape)
-        fa_shift = 1 + (random.randrange(-10, 10, 1) / 100)  # uniform distribution
-        for seq in range(self.batch_size):
-            sequence = odata[seq, :, :, :]
-            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
-            sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
-                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
-            # shift_vec = np.array([[fa_shift, fa_shift, 0]])
-            # shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1) \
-            #     .reshape(sequence_clean.shape)
-            shift = matlib.repmat(fa_shift, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 3) \
-                .reshape(sequence_clean.shape)
-            sequence_shifted = sequence_clean + shift
-            data_aug[seq, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
-                                            mode='constant', constant_values=0)
-        return data_aug
-
-    def shift_gauss_xy_augmentation(self, odata):
+    def shift_augmentation(self, odata):
         # print("Doing data shift augmentation.")
         data_aug = np.zeros(odata.shape)
         for seq in range(self.batch_size):
             sequence = odata[seq, :, :, :]
-            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
-            sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)]\
-                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+            clean_width = int(sequence[~np.all(sequence == 0.0, axis=3)].shape[0]/sequence.shape[2])
+            sequence_clean = sequence[~np.all(sequence == 0.0, axis=3)]\
+                .reshape([clean_width, sequence.shape[2], sequence.shape[3]])
             shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
             shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
-            # Applying the shift augmentation
+            # Do the shift augmentation
             shift_vec = np.array([[shift_x_fac, shift_y_fac, 0]])
             shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1)\
                 .reshape(sequence_clean.shape)
@@ -139,7 +123,7 @@ class DataGenerator(keras.utils.Sequence):
     @staticmethod
     def interpolate_augmentation(odata):
         # print("Doing time interpolation data augmentation")
-        data_aug = np.zeros(odata.shape)
+        data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
         num_seqncs = odata.shape[0]
         num_frames = odata.shape[1]
         num_joints = odata.shape[2]
@@ -160,20 +144,22 @@ class DataGenerator(keras.utils.Sequence):
                     # print("Interpolated coordinate value: %s " % data_aug[seq, int(frm + 1), jnt, :])
         return data_aug
 
-    def translate_augmentation(self, odata):
-        # print("Doing translation data augmentation")
+    def chain_shift_augmentation(self, odata):
+        # print("Doing data shift augmentation.")
         data_aug = np.zeros(odata.shape)
-        translate_factor = displmt = random.randint(-1, 1)
-        for seq in range(self.batch_size):
-            sequence = odata[seq, :, :, :]
-            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
-            sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
-                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
-            translate_arr = np.ones(sequence_clean.shape) * translate_factor
-            # Apply the translation augmentation
-            sequence_translated = sequence_clean + translate_arr
-            data_aug[seq, :, :, :] = np.pad(sequence_translated, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
-                                            mode='constant', constant_values=0)
+        sequence = odata
+        clean_width = int(sequence[~np.all(sequence == 0.0, axis=3)].shape[0]/sequence.shape[2])
+        sequence_clean = sequence[~np.all(sequence == 0.0, axis=3)] \
+            .reshape([clean_width, sequence.shape[2], sequence.shape[3]])
+        shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
+        shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
+        # Do the shift augmentation
+        shift_vec = np.array([[shift_x_fac, shift_y_fac, 0]])
+        shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1) \
+            .reshape(sequence_clean.shape)
+        sequence_shifted = sequence_clean + shift
+        data_aug[0, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
+                                        mode='constant', constant_values=0)
         return data_aug
 
     def __augment_data(self, augtype, odata):
@@ -182,39 +168,29 @@ class DataGenerator(keras.utils.Sequence):
         elif augtype == 'scale':
             scaled = self.scale_augmentation(odata)
             return scaled
-        elif augtype == 'shift_uni_xyz':
-            shifted = self.shift_uni_xyz_augmentation(odata)
+        elif augtype == 'shift':
+            shifted = self.shift_augmentation(odata)
             return shifted
-        elif augtype == 'shift_gauss_xy':
-            shifted = self.shift_gauss_xy_augmentation(odata)
-            return shifted
-        elif augtype == 'scale_shift':
-            scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
-            return shifted_scaled
-        elif augtype == 'translate':
-            translated = self.translate_augmentation(odata)
-            return translated
-        elif augtype == 'scale_translate':
-            translated = self.translate_augmentation(odata)
-            translated_scaled = self.shift_uni_xyz_augmentation(translated)
-            return translated_scaled
         elif augtype == 'noise':
-            scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
-            noised = self.noise_augmentation(shifted_scaled)
+            noised = self.noise_augmentation(odata)
             return noised
         elif augtype == 'subsample':
-            scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
-            subsampled = self.subsample_augmentation(shifted_scaled)
+            subsampled = self.subsample_augmentation(odata)
             return subsampled
         elif augtype == 'interpol':
-            scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
-            interpolated = self.interpolate_augmentation(shifted_scaled)
+            interpolated = self.interpolate_augmentation(odata)
             return interpolated
-
+        elif augtype == 'scale_shift':
+            scaled = self.scale_augmentation(odata)
+            shifted_scaled = self.shift_augmentation(scaled)
+            return shifted_scaled
+        elif augtype == 'ITP_SCL_SFT':
+            interpolated = self.interpolate_augmentation(odata)
+            scaled = self.scale_augmentation(interpolated)
+            return self.shift_augmentation(scaled)
+        elif augtype == 'chain_shift':
+            shifted = self.chain_shift_augmentation(odata)
+            return shifted
         else:
             return odata
 
@@ -230,11 +206,22 @@ class DataGenerator(keras.utils.Sequence):
         agmnt_data = []
         agmnt_labels = []
 
-        for agmt_type in augmentations:
-            sppl_data = self.__augment_data(agmt_type, train_data)
-            aug_data, aug_labels = shuffle(sppl_data, train_labels, random_state=42)
-            agmnt_data.append(aug_data)
-            agmnt_labels.append(aug_labels)
+        # for agmt_type in augmentations:
+        #     sppl_data = self.__augment_data(agmt_type, train_data)
+        #     aug_data, aug_labels = shuffle(sppl_data, train_labels, random_state=42)
+        #     agmnt_data.append(aug_data)
+        #     agmnt_labels.append(aug_labels)
+
+        # simple & suboptimal try to chain scale and shift, w/o implementing recursion method for now
+        for sid in range(train_data.shape[0]):
+            sample = train_data[sid, :, :, :].reshape([1, self.dim[0], self.dim[1], self.dim[2]])
+            label = train_labels[0, :].reshape([1, -1])
+            for id_sc in range(self.batch_factor):
+                scaled = self.__augment_data("scale", sample)
+                for id_sft in range(self.batch_factor):
+                    shifted_scaled = self.__augment_data("chain_shift", scaled)
+                    agmnt_data.append(shifted_scaled)
+                    agmnt_labels.append(label)
 
         batch_data = np.asarray(agmnt_data).reshape(-1, train_data.shape[1], train_data.shape[2], train_data.shape[3])
         batch_labels = np.asarray(agmnt_labels).reshape(-1, train_labels.shape[1])
