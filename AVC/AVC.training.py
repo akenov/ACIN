@@ -42,7 +42,6 @@ def sliding_window_generator(sequence, label):
     return slided_window_samples[1:, :, :, :], slided_window_labels[1:, :]
 
 
-
 def load_from_file(list_of_files):
     fshape = [MAX_WIDTH, NUM_JOINTS, 3]
     fdapool = []
@@ -51,8 +50,12 @@ def load_from_file(list_of_files):
 
     for file in list_of_files:
         print("Loading experiment: " + file)
-        fdata = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS).as_matrix()
-        flabel = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE).as_matrix()
+        # fdata = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS).as_matrix()
+        # flabel = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE).as_matrix()
+        df = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS)
+        fdata = df.values
+        dl = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE)
+        flabel = dl.values
 
         # Subselect data corresponding to the labels of interest
         # max_len = 0 # read 229, thus 500 fits all augmentation schemes
@@ -686,7 +689,7 @@ NUM_JOINTS = 22
 
 # EXPERIMENTS_DIR = "./AVCexperimentsData/"
 # MULTI_CPU = True
-EXPERIMENTS_DIR = "C:\\Users\\antonk\\PycharmProjects\\datasets\\AVCexperimentsData\\"
+EXPERIMENTS_DIR = "D:\\!DA-20092018\\AVCexperimentsData"
 MULTI_CPU = False
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
