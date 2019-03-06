@@ -73,8 +73,22 @@ def load_from_file(list_of_files):
                 if i < len(flabel) and flabel[i + 1] != label and label_series:
                     # print("LABEL JUMP DETECTED: %s " % flabel[i+1])
                     label_series = False
-                    # print("Saving sample for action: %s with length %d" % (label, s_idx))
-                    fdapool.append(sample_)
+                    print("Orignal sample for action: %s with length %d" % (label, s_idx))
+                    if 100 < s_idx <= 200:
+                        substep = 2
+                    elif 200 < s_idx <= 300:
+                        substep = 3
+                    elif 300 < s_idx <= 400:
+                        substep = 4
+                    elif s_idx > 400:
+                        substep = 5
+                    else:
+                        substep = 1
+                    subrange = np.arange(0, s_idx, substep)
+                    print("Adding subsample with length %d " % len(subrange))
+                    sub_sample = np.pad(sample_[subrange], [(0, MAX_WIDTH - len(subrange)), (0, 0), (0, 0)],
+                                        mode='constant', constant_values=0)
+                    fdapool.append(sub_sample)
                     feapool.append(label)
                     sample_ = np.zeros(fshape)
                     s_idx = 0
@@ -88,7 +102,7 @@ def load_from_file(list_of_files):
 
     data_raw = np.reshape(fdapool, [-1, MAX_WIDTH, NUM_JOINTS, 3])
 
-    print(le.fit(feapool).classes_)
+    # print(le.fit(feapool).classes_)
     # transforms alphabetically: A->Z : 0->25
     # G..rab -> 0
     # M..oveObj -> 1
@@ -97,7 +111,8 @@ def load_from_file(list_of_files):
     # Generate numeric feature vector via LabelEncoder()
     feat_labenc = le.fit_transform(np.array(feapool))
     # Generate OneHot feature matrix via OneHotEncoder()
-    feat_onehot = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
+    # feat_onehot = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
+    feat_onehot = ohe.fit_transform(np.array(feapool).reshape(len(feat_labenc), 1))
     print("Final dataset dimensions: " + str(data_raw.shape))
     return data_raw, feat_onehot
 
