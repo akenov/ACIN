@@ -52,10 +52,16 @@ def load_from_file(list_of_files):
         print("Loading experiment: " + file)
         # fdata = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS).as_matrix()
         # flabel = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE).as_matrix()
+
         df = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS)
         fdata = df.values
         dl = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE)
         flabel = dl.values
+        dtch = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_TOUCH)
+
+        ftouch = dtch.values
+        ftouch = np.append(ftouch, np.zeros([ftouch.shape[0], 1]), axis=1)
+        fdata = np.append(fdata, ftouch, axis=1)
 
         # Subselect data corresponding to the labels of interest
         # max_len = 0 # read 229, thus 500 fits all augmentation schemes
@@ -640,6 +646,11 @@ CLMNS_LABEL_FINE = [
     'fineAnnotation'
 ]
 
+CLMNS_TOUCH = [
+    "PringlesTouchesHand",
+    "TeaboxTouchesHand",
+]
+
 EXPR_SET = [
      1,  2,  3,  4,  5,  6,  7,  8,  9,
     11, 12, 18, 19, 20, 21, 22, 23, 24,
@@ -699,7 +710,7 @@ VALID_LABELS = ["reach", "grab", "moveObject", "place"]
 DATASET_NAME = 'AVCExt'
 NUM_CLASSES = 4
 MAX_WIDTH = 500
-NUM_JOINTS = 22
+NUM_JOINTS = 23 # 22 hand joints & 1 including touch info
 # PARAMETERS #
 
 # EXPERIMENTS_DIR = "./AVCexperimentsData/"
@@ -762,6 +773,13 @@ for model in TRAIN_MODELS:
             print("| File Batch: " + key)
             print("| Augmentations: %s" % AUGMENTATIONS)
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+
+            #     #     #      #      #      #      #      #      #      #      #
+            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
+            if key != "kfold0":
+                print("Skipping split " + key)
+                continue
+            #     #     #      #      #      #      #      #      #      #      #
 
             # if EXTEND_ACTIONS:
             #     print("Extend Actions #Frames Threshold: %d" % FRAMES_THRESHOLD)
