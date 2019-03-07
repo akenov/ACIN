@@ -38,7 +38,6 @@ def extend_sequences(sequence_, avg_length=10):
 
 
 def skeleton_reshape(sequence_):
-    # new_sequence = np.zeros([NUM_JOINTS, MAX_WIDTH, 3])
     new_sequence = np.zeros([MAX_WIDTH, NUM_JOINTS, 3])
     sequence_length = sequence_.shape[0]
     for frame_id in range(sequence_length):

@@ -6,23 +6,23 @@ import math
 import os
 import numpy as np
 import itertools
-from numpy import matlib
+
 from datetime import datetime
 from DataGenerator import DataGenerator
 import keras
 from keras import regularizers
 from keras import backend as k
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, Reshape, Permute, Activation
+from keras.layers import Dense, Dropout, Flatten, Reshape
 from keras.layers import Conv2D, MaxPooling2D, LSTM, Masking, BatchNormalization
 from keras.callbacks import TensorBoard
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.utils import shuffle
 from sklearn.metrics import confusion_matrix
 
 
 def sliding_window_generator(sequence, label):
+    window_size = math.floor(COEFF_SLIDINGWINDOW * sequence.shape[0])
     label = label.reshape([1, -1])
     slided_window_samples = np.zeros([1, sequence.shape[0], sequence.shape[1], sequence.shape[2]])
     slided_window_labels = np.zeros([1, label.shape[1]])
@@ -31,9 +31,9 @@ def sliding_window_generator(sequence, label):
     sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
         .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
 
-    for frame_id in range(sequence_clean.shape[0] - SLIDINGWINDOW_SIZE + 1):
-        window = sequence_clean[frame_id: frame_id+SLIDINGWINDOW_SIZE, :, :]
-        sequence_padded = np.pad(window, [(0, sequence.shape[0] - SLIDINGWINDOW_SIZE), (0, 0), (0, 0)],
+    for frame_id in range(sequence_clean.shape[0] - window_size + 1):
+        window = sequence_clean[frame_id: frame_id + window_size, :, :]
+        sequence_padded = np.pad(window, [(0, sequence.shape[0] - window_size), (0, 0), (0, 0)],
                                  mode='constant', constant_values=0)
         slided_window_samples = np.append(slided_window_samples, sequence_padded.reshape(
             [1, sequence.shape[0], sequence.shape[1], sequence.shape[2]]), axis=0)
@@ -50,18 +50,10 @@ def load_from_file(list_of_files):
 
     for file in list_of_files:
         print("Loading experiment: " + file)
-        # fdata = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS).as_matrix()
-        # flabel = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE).as_matrix()
-
         df = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS)
         fdata = df.values
         dl = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE)
         flabel = dl.values
-        dtch = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_TOUCH)
-
-        ftouch = dtch.values
-        ftouch = np.append(ftouch, np.add(np.zeros([ftouch.shape[0], 1]), 1.e-8), axis=1)
-        fdata = np.append(fdata, ftouch, axis=1)
 
         # Subselect data corresponding to the labels of interest
         # max_len = 0 # read 229, thus 500 fits all augmentation schemes
@@ -535,7 +527,7 @@ def print_summary():
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
-    print("| SLIDINGWINDOW_SIZE: " + str(SLIDINGWINDOW_SIZE))
+    print("| COEFF_SLIDINGWINDOW: " + str(COEFF_SLIDINGWINDOW))
     print("| COEFF_DROPOUT: " + str(COEFF_DROPOUT))
     print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
@@ -649,11 +641,6 @@ CLMNS_LABEL_FINE = [
     'fineAnnotation'
 ]
 
-CLMNS_TOUCH = [
-    "PringlesTouchesHand",
-    "TeaboxTouchesHand",
-]
-
 EXPR_SET = [
      1,  2,  3,  4,  5,  6,  7,  8,  9,
     11, 12, 18, 19, 20, 21, 22, 23, 24,
@@ -674,38 +661,38 @@ batch_names = [
     ('kfold2', '5'),
     ('kfold2', '6'),
     ('kfold2', '7'),
-    # ('kfold2', '8'),
-    # ('kfold2', '9'),
-    # ('kfold2', '11'),
-    # ('kfold2', '12'),
-    # ('kfold2', '18'),
-    # ('kfold2', '19'),
-    # ('kfold2', '20'),
-    # ('kfold2', '21'),
-    # ('kfold2', '22'),
-    # ('kfold2', '23'),
-    # ('kfold2', '24'),
-    # ('kfold2', '25'),
-    # ('kfold2', '26'),
-    # ('kfold2', '28'),
-    # ('kfold2', '29'),
-    # ('kfold2', '30'),
-    # ('kfold2', '31'),
-    # ('kfold2', '32'),
-    # ('kfold2', '33'),
-    # ('kfold2', '34'),
-    # ('kfold2', '35'),
-    # ('kfold2', '36'),
-    # ('kfold2', '37'),
-    # ('kfold2', '38'),
-    # ('kfold2', '39'),
-    # ('kfold2', '40'),
-    # ('kfold2', '42'),
-    # ('kfold2', '43'),
-    # ('kfold2', '44'),
-    # ('kfold2', '45'),
-    # ('kfold2', '46'),
-    # ('kfold2', '47'),
+    ('kfold2', '8'),
+    ('kfold2', '9'),
+    ('kfold2', '11'),
+    ('kfold2', '12'),
+    ('kfold2', '18'),
+    ('kfold2', '19'),
+    ('kfold2', '20'),
+    ('kfold2', '21'),
+    ('kfold2', '22'),
+    ('kfold2', '23'),
+    ('kfold2', '24'),
+    ('kfold2', '25'),
+    ('kfold2', '26'),
+    ('kfold2', '28'),
+    ('kfold2', '29'),
+    ('kfold2', '30'),
+    ('kfold2', '31'),
+    ('kfold2', '32'),
+    ('kfold2', '33'),
+    ('kfold2', '34'),
+    ('kfold2', '35'),
+    ('kfold2', '36'),
+    ('kfold2', '37'),
+    ('kfold2', '38'),
+    ('kfold2', '39'),
+    ('kfold2', '40'),
+    ('kfold2', '42'),
+    ('kfold2', '43'),
+    ('kfold2', '44'),
+    ('kfold2', '45'),
+    ('kfold2', '46'),
+    ('kfold2', '47'),
 ]
 
 VALID_LABELS = ["reach", "grab", "moveObject", "place"]
@@ -713,7 +700,7 @@ VALID_LABELS = ["reach", "grab", "moveObject", "place"]
 DATASET_NAME = 'AVCExt'
 NUM_CLASSES = 4
 MAX_WIDTH = 500
-NUM_JOINTS = 23  # 22 hand joints & 1 including touch info
+NUM_JOINTS = 22
 # PARAMETERS #
 
 # EXPERIMENTS_DIR = "./AVCexperimentsData/"
@@ -727,7 +714,7 @@ USE_SLIDINGWINDOW = True
 # USE_SCALER = False
 CNN_TRAINABLE = True
 FRAMES_THRESHOLD = 13
-SLIDINGWINDOW_SIZE = 80
+COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.6
 COEFF_REGULARIZATION_L2 = 0.015
 CNN_BATCH_SIZE = 50
@@ -735,7 +722,7 @@ RNN_BATCH_SIZE = 16
 k.set_epsilon(1e-06)
 
 ITERATIONS = 1
-NUM_EPOCHS = 1
+NUM_EPOCHS = 10
 AUGMENTATIONS = [
     'none',
     # "scale_shift",
@@ -752,8 +739,8 @@ OPTIMIZER = [
     # "AdaDelta"
 ]
 TRAIN_MODELS = [
-    'CNN',
-    # 'LSTM',
+    # 'CNN',
+    'LSTM',
     # 'ConvRNN'
 ]
 # END OF PARAMETERS
