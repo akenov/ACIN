@@ -60,7 +60,7 @@ def load_from_file(list_of_files):
         dtch = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_TOUCH)
 
         ftouch = dtch.values
-        ftouch = np.append(ftouch, np.zeros([ftouch.shape[0], 1]), axis=1)
+        ftouch = np.append(ftouch, np.add(np.zeros([ftouch.shape[0], 1]), 1.e-8), axis=1)
         fdata = np.append(fdata, ftouch, axis=1)
 
         # Subselect data corresponding to the labels of interest
@@ -72,6 +72,9 @@ def load_from_file(list_of_files):
             label_series = False
             for i in np.arange(len(flabel)-1):
                 if flabel[i] == label:
+                    if np.count_nonzero(fdata[i, :66]) == 0:
+                        print("Empty labeled frame detected. Skipping.")
+                        continue
                     label_series = True
                     row = np.array(fdata[i]).reshape(NUM_JOINTS, 3)
                     sample_[s_idx, :, :] = row
@@ -117,8 +120,8 @@ def load_from_file(list_of_files):
     # Generate numeric feature vector via LabelEncoder()
     feat_labenc = le.fit_transform(np.array(feapool))
     # Generate OneHot feature matrix via OneHotEncoder()
-    # feat_onehot = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
-    feat_onehot = ohe.fit_transform(np.array(feapool).reshape(len(feat_labenc), 1))
+    feat_onehot = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
+    # feat_onehot = ohe.fit_transform(np.array(feapool).reshape(len(feat_labenc), 1))
     print("Final dataset dimensions: " + str(data_raw.shape))
     return data_raw, feat_onehot
 
@@ -671,38 +674,38 @@ batch_names = [
     ('kfold2', '5'),
     ('kfold2', '6'),
     ('kfold2', '7'),
-    ('kfold2', '8'),
-    ('kfold2', '9'),
-    ('kfold2', '11'),
-    ('kfold2', '12'),
-    ('kfold2', '18'),
-    ('kfold2', '19'),
-    ('kfold2', '20'),
-    ('kfold2', '21'),
-    ('kfold2', '22'),
-    ('kfold2', '23'),
-    ('kfold2', '24'),
-    ('kfold2', '25'),
-    ('kfold2', '26'),
-    ('kfold2', '28'),
-    ('kfold2', '29'),
-    ('kfold2', '30'),
-    ('kfold2', '31'),
-    ('kfold2', '32'),
-    ('kfold2', '33'),
-    ('kfold2', '34'),
-    ('kfold2', '35'),
-    ('kfold2', '36'),
-    ('kfold2', '37'),
-    ('kfold2', '38'),
-    ('kfold2', '39'),
-    ('kfold2', '40'),
-    ('kfold2', '42'),
-    ('kfold2', '43'),
-    ('kfold2', '44'),
-    ('kfold2', '45'),
-    ('kfold2', '46'),
-    ('kfold2', '47'),
+    # ('kfold2', '8'),
+    # ('kfold2', '9'),
+    # ('kfold2', '11'),
+    # ('kfold2', '12'),
+    # ('kfold2', '18'),
+    # ('kfold2', '19'),
+    # ('kfold2', '20'),
+    # ('kfold2', '21'),
+    # ('kfold2', '22'),
+    # ('kfold2', '23'),
+    # ('kfold2', '24'),
+    # ('kfold2', '25'),
+    # ('kfold2', '26'),
+    # ('kfold2', '28'),
+    # ('kfold2', '29'),
+    # ('kfold2', '30'),
+    # ('kfold2', '31'),
+    # ('kfold2', '32'),
+    # ('kfold2', '33'),
+    # ('kfold2', '34'),
+    # ('kfold2', '35'),
+    # ('kfold2', '36'),
+    # ('kfold2', '37'),
+    # ('kfold2', '38'),
+    # ('kfold2', '39'),
+    # ('kfold2', '40'),
+    # ('kfold2', '42'),
+    # ('kfold2', '43'),
+    # ('kfold2', '44'),
+    # ('kfold2', '45'),
+    # ('kfold2', '46'),
+    # ('kfold2', '47'),
 ]
 
 VALID_LABELS = ["reach", "grab", "moveObject", "place"]
@@ -710,7 +713,7 @@ VALID_LABELS = ["reach", "grab", "moveObject", "place"]
 DATASET_NAME = 'AVCExt'
 NUM_CLASSES = 4
 MAX_WIDTH = 500
-NUM_JOINTS = 23 # 22 hand joints & 1 including touch info
+NUM_JOINTS = 23  # 22 hand joints & 1 including touch info
 # PARAMETERS #
 
 # EXPERIMENTS_DIR = "./AVCexperimentsData/"
@@ -808,8 +811,8 @@ for model in TRAIN_MODELS:
                 if USE_SLIDINGWINDOW:
                     print("Generating sliding windows samples. This can take a while...")
                     for sample_id in range(train_data.shape[0]):
-                        train_data_sliwin, train_labels_sliwin = sliding_window_generator(
-                            train_data[sample_id, :, :, :], train_labels[sample_id, :])
+                        train_data_sliwin, train_labels_sliwin = sliding_window_generator(train_data[sample_id, :, :, :]
+                                                                                          , train_labels[sample_id, :])
                         train_data = np.append(train_data, train_data_sliwin, axis=0)
                         train_labels = np.append(train_labels, train_labels_sliwin, axis=0)
 
