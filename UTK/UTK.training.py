@@ -512,8 +512,9 @@ def run_keras_lstm_model(loso_, run_suffix):
     lstm_model.add(Reshape(resh_shape, input_shape=ishape))
     lstm_model.add(Masking(mask_value=0.0, input_shape=lstm_model.layers[-1].output_shape))
     lstm_model.add(BatchNormalization(axis=2))
-    lstm_model.add(LSTM(128, return_sequences=True, stateful=False))
-    lstm_model.add(LSTM(64, stateful=False))
+    lstm_model.add(LSTM(128, return_sequences=True, stateful=False, dropout=LSTM_DROPOUT,
+                        recurrent_dropout=LSTM_RECCURENT_DROPOUT))
+    lstm_model.add(LSTM(64, stateful=False, dropout=LSTM_DROPOUT, recurrent_dropout=LSTM_RECCURENT_DROPOUT))
     lstm_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     lstm_model.compile(loss=keras.losses.categorical_crossentropy,
@@ -681,8 +682,8 @@ def run_keras_nunez_model(loso_, run_suffix):
     # print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Masking(mask_value=0.0, input_shape=nunez_model.layers[-1].output_shape))
     nunez_model.add(BatchNormalization())
-    nunez_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2),
-                         stateful=False, use_bias=False))
+    nunez_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2), stateful=False,
+                         use_bias=False, dropout=LSTM_DROPOUT, recurrent_dropout=LSTM_RECCURENT_DROPOUT))
     nunez_model.add(Dropout(COEFF_DROPOUT))
     # nunez_model.add(Flatten())
     nunez_model.add(Dense(NUM_CLASSES, activation='softmax'))
@@ -766,6 +767,7 @@ def print_summary():
     print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| OPTIMIZER: " + OPTIMIZER[0])
+    print("| NUM_EPOCHS: " + NUM_EPOCHS)
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
@@ -860,6 +862,8 @@ CNN_TRAINABLE = True
 FRAMES_THRESHOLD = 13
 COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.6
+LSTM_DROPOUT = 0.2
+LSTM_RECCURENT_DROPOUT = 0.2
 COEFF_REGULARIZATION_L2 = 0.015
 CNN_BATCH_SIZE = 50
 RNN_BATCH_SIZE = 16
