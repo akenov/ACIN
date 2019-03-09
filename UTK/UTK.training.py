@@ -754,7 +754,7 @@ def print_summary():
     print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| OPTIMIZER: " + OPTIMIZER[0])
-    print("| NUM_EPOCHS: " + NUM_EPOCHS)
+    print("| NUM_EPOCHS: " + str(NUM_EPOCHS))
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
@@ -859,11 +859,11 @@ k.set_epsilon(1e-06)
 ITERATIONS = 1
 NUM_EPOCHS = 100
 AUGMENTATIONS = [
-    'none',
+    # 'none',
     # "scale_shift",
     # 'scale',
     # 'shift_gauss_xy',
-    # 'noise',
+    'noise',
     # 'subsample',
     # 'interpol',
     # 'translate',

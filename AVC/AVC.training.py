@@ -27,9 +27,9 @@ def sliding_window_generator(sequence, label):
     slided_window_samples = np.zeros([1, sequence.shape[0], sequence.shape[1], sequence.shape[2]])
     slided_window_labels = np.zeros([1, label.shape[1]])
 
-    clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+    clean_length = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
     sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
-        .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+        .reshape([clean_length, sequence.shape[1], sequence.shape[2]])
 
     for frame_id in range(sequence_clean.shape[0] - window_size + 1):
         window = sequence_clean[frame_id: frame_id + window_size, :, :]
@@ -512,7 +512,7 @@ def print_summary():
     print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| OPTIMIZER: " + OPTIMIZER[0])
-    print("| NUM_EPOCHS: " + NUM_EPOCHS)
+    print("| NUM_EPOCHS: " + str(NUM_EPOCHS))
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
