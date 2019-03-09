@@ -313,7 +313,7 @@ def run_keras_lstm_model(loso_, run_suffix):
     #                          validation_data=(test_data, test_labels))
 
     history = lstm_model.fit_generator(generator=training_generator,
-                                       epochs=4*NUM_EPOCHS,
+                                       epochs=NUM_EPOCHS,
                                        shuffle=False, use_multiprocessing=MULTI_CPU,
                                        callbacks=[tensorboard])
 
@@ -701,10 +701,13 @@ for model in TRAIN_MODELS:
         RESULTS = []
         CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
-            # for subject in subject_list:
-            # loso_id = subject.split('_')[1]
-            # loso = "loso" + loso_id[:len(loso_id)-1]
-            # loso = subject[:len(subject)-1].replace('_', '').upper()
+            #     #     #      #      #      #      #      #      #      #      #
+            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
+            if key != "kfold0":
+                print("Skipping split " + key)
+                continue
+            #     #     #      #      #      #      #      #      #      #      #
+
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
             print("| File Batch: " + key)
             print("| Augmentations: %s" % AUGMENTATIONS)
@@ -713,13 +716,6 @@ for model in TRAIN_MODELS:
             if USE_SLIDINGWINDOW:
                 print("| Sliding Window Length: %.2f" % COEFF_SLIDINGWINDOW)
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-
-            #     #     #      #      #      #      #      #      #      #      #
-            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
-            if key != "kfold0":
-                print("Skipping split " + key)
-                continue
-            #     #     #      #      #      #      #      #      #      #      #
 
             test_files = []
             for batch_pair in batch_group:

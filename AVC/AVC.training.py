@@ -748,11 +748,6 @@ for model in TRAIN_MODELS:
         RESULTS = []
         CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
-            print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-            print("| File Batch: " + key)
-            print("| Augmentations: %s" % AUGMENTATIONS)
-            print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-
             #     #     #      #      #      #      #      #      #      #      #
             # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
             if key != "kfold0":
@@ -760,10 +755,10 @@ for model in TRAIN_MODELS:
                 continue
             #     #     #      #      #      #      #      #      #      #      #
 
-            # if EXTEND_ACTIONS:
-            #     print("Extend Actions #Frames Threshold: %d" % FRAMES_THRESHOLD)
-            # if USE_SLIDINGWINDOW:
-            #     print("Sliding Window Length: %.2f" % COEFF_SLIDINGWINDOW)
+            print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
+            print("| File Batch: " + key)
+            print("| Augmentations: %s" % AUGMENTATIONS)
+            print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
 
             test_files = []
             for batch_pair in batch_group:

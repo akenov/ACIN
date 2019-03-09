@@ -518,7 +518,7 @@ def run_keras_lstm_model(loso_, run_suffix):
     #                          validation_data=(test_data, test_labels))
 
     history = lstm_model.fit_generator(generator=training_generator,
-                                       epochs=4*NUM_EPOCHS, validation_data=(test_data_, test_labels_),
+                                       epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
                                        shuffle=False, use_multiprocessing=MULTI_CPU,
                                        callbacks=[tensorboard])
 
@@ -898,6 +898,13 @@ for model in TRAIN_MODELS:
         RESULTS = []
         CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
+            #     #     #      #      #      #      #      #      #      #      #
+            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
+            if key != "kfold0":
+                print("Skipping split " + key)
+                continue
+            #     #     #      #      #      #      #      #      #      #      #
+
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
             print("| File Batch: " + key)
             print("| Augmentations: %s" % AUGMENTATIONS)
