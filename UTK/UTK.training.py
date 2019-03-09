@@ -394,30 +394,18 @@ def run_keras_cnn_model(loso_, run_suffix):
 
     cnn_model = Sequential()
 
-    # cnn_model.add(BatchNormalization(input_shape=ishape))
-    # cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
-    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
-    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
-    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # cnn_model.add(Dropout(COEFF_DROPOUT))
-    # cnn_model.add(Dense(300, activation='relu', use_bias=False))
-    # cnn_model.add(Dropout(COEFF_DROPOUT))
-    # cnn_model.add(Dense(100, activation='relu', use_bias=False))
-    # cnn_model.add(Flatten())
-    # cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
-
-    # Old MNIST Model with single Dense layer
     cnn_model.add(BatchNormalization(input_shape=ishape))
-    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
+    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
     cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(Dense(300, activation='relu', use_bias=False))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(Dense(100, activation='relu', use_bias=False))
     cnn_model.add(Flatten())
-    cnn_model.add(Dense(128, activation='relu', use_bias=False))
-    cnn_model.add(Dropout(COEFF_DROPOUT))
     cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     cnn_model.compile(loss=keras.losses.categorical_crossentropy,
@@ -512,9 +500,8 @@ def run_keras_lstm_model(loso_, run_suffix):
     lstm_model.add(Reshape(resh_shape, input_shape=ishape))
     lstm_model.add(Masking(mask_value=0.0, input_shape=lstm_model.layers[-1].output_shape))
     lstm_model.add(BatchNormalization(axis=2))
-    lstm_model.add(LSTM(128, return_sequences=True, stateful=False, dropout=LSTM_DROPOUT,
-                        recurrent_dropout=LSTM_RECCURENT_DROPOUT))
-    lstm_model.add(LSTM(64, stateful=False, dropout=LSTM_DROPOUT, recurrent_dropout=LSTM_RECCURENT_DROPOUT))
+    lstm_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2),
+                        stateful=False, use_bias=False, dropout=COEFF_DROPOUT))
     lstm_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     lstm_model.compile(loss=keras.losses.categorical_crossentropy,
