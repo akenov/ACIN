@@ -313,7 +313,7 @@ def run_keras_lstm_model(loso_, run_suffix):
     #                          validation_data=(test_data, test_labels))
 
     history = lstm_model.fit_generator(generator=training_generator,
-                                       epochs=NUM_EPOCHS,
+                                       epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
                                        shuffle=False, use_multiprocessing=MULTI_CPU,
                                        callbacks=[tensorboard])
 

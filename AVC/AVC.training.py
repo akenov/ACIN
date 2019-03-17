@@ -87,7 +87,7 @@ def load_from_file(list_of_files):
                         substep = 1
                     subrange = np.arange(0, s_idx, substep)
                     print("Adding subsample with length %d " % len(subrange))
-                    sub_sample = np.pad(sample_[subrange], [(0, MAX_WIDTH - len(subrange)), (0, 0), (0, 0)],
+                    sub_sample = np.pad(sample_[subrange], [(0, NEW_MAX_WIDTH - len(subrange)), (0, 0), (0, 0)],
                                         mode='constant', constant_values=0)
                     fdapool.append(sub_sample)
                     feapool.append(label)
@@ -101,7 +101,7 @@ def load_from_file(list_of_files):
         fdapool.append(np.zeros(fshape))
         feapool.append('place')
 
-    data_raw = np.reshape(fdapool, [-1, MAX_WIDTH, NUM_JOINTS, 3])
+    data_raw = np.reshape(fdapool, [-1, NEW_MAX_WIDTH, NUM_JOINTS, 3])
 
     # print(le.fit(feapool).classes_)
     # transforms alphabetically: A->Z : 0->25
@@ -380,6 +380,10 @@ def run_keras_nunez_model(loso_, run_suffix):
                        optimizer=get_optimizer(),
                        metrics=['accuracy'])
 
+    output_3 = conv_model.layers[3].output
+    x = k.print_tensor(output_3, message="TensorOut = ")
+    print(x.eval())
+
     conv_model.summary()
     print(datetime.now())
     print("Start training")
@@ -430,7 +434,7 @@ def run_keras_nunez_model(loso_, run_suffix):
 
     # nunez_model.add(Permute((2, 1, 3))) # no need in the Nunez shape style
     # print(nunez_model.layers[-1].output_shape)
-    nunez_model.add(Reshape((62, 200)))
+    nunez_model.add(Reshape((15, 200)))
     # print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Masking(mask_value=0.0, input_shape=nunez_model.layers[-1].output_shape))
     nunez_model.add(BatchNormalization())
@@ -444,6 +448,14 @@ def run_keras_nunez_model(loso_, run_suffix):
                         optimizer=get_optimizer(),
                         metrics=['accuracy'])
 
+    # EXPERIMENT
+
+    output_10 = nunez_model.layers[10].output
+    x = k.print_tensor(output_10, message="TensorOut = ")
+    print(x.eval())
+
+    # END EXP
+
     nunez_model.summary()
     print(datetime.now())
     print("Start training")
@@ -451,6 +463,13 @@ def run_keras_nunez_model(loso_, run_suffix):
                                             epochs=int(NUM_EPOCHS*5), validation_data=(test_data_, test_labels_),
                                             shuffle=False, use_multiprocessing=MULTI_CPU,
                                             callbacks=[tensorboard])
+    # EXPERIMENT
+
+    output_10 = nunez_model.layers[10].output
+    x = k.print_tensor(output_10, message="TensorOut = ")
+    print(x.eval())
+
+    # END EXP
 
     print(datetime.now())
     rnn_scores = nunez_model.evaluate(test_data_, test_labels_, batch_size=batch_size_aug_cnn)
@@ -689,6 +708,7 @@ VALID_LABELS = ["reach", "grab", "moveObject", "place"]
 DATASET_NAME = 'AVCExt'
 NUM_CLASSES = 4
 MAX_WIDTH = 500
+NEW_MAX_WIDTH = 120
 NUM_JOINTS = 22
 # PARAMETERS #
 
@@ -711,7 +731,7 @@ RNN_BATCH_SIZE = 16
 k.set_epsilon(1e-06)
 
 ITERATIONS = 1
-NUM_EPOCHS = 10
+NUM_EPOCHS = 1
 AUGMENTATIONS = [
     'none',
     # "scale_shift",
@@ -729,8 +749,8 @@ OPTIMIZER = [
 ]
 TRAIN_MODELS = [
     # 'CNN',
-    'LSTM',
-    # 'ConvRNN'
+    # 'LSTM',
+    'ConvRNN'
 ]
 # END OF PARAMETERS
 
