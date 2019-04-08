@@ -193,7 +193,7 @@ class DataGenerator(keras.utils.Sequence):
             return shifted
         elif augtype == 'scale_shift':
             scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
+            shifted_scaled = self.shift_gauss_xy_augmentation(scaled)
             return shifted_scaled
         elif augtype == 'translate':
             translated = self.translate_augmentation(odata)
