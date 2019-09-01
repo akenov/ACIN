@@ -59,16 +59,16 @@ class DataGenerator(keras.utils.Sequence):
         fa_shift = 1 + (random.randrange(-10, 10, 1) / 100)  # uniform distribution
         for seq in range(self.batch_size):
             sequence = odata[seq, :, :, :]
-            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+            clean_length = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
             sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
-                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+                .reshape([clean_length, sequence.shape[1], sequence.shape[2]])
             # shift_vec = np.array([[fa_shift, fa_shift, 0]])
             # shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1) \
             #     .reshape(sequence_clean.shape)
             shift = matlib.repmat(fa_shift, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 3) \
                 .reshape(sequence_clean.shape)
             sequence_shifted = sequence_clean + shift
-            data_aug[seq, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
+            data_aug[seq, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_length), (0, 0), (0, 0)],
                                             mode='constant', constant_values=0)
         return data_aug
 
@@ -77,9 +77,9 @@ class DataGenerator(keras.utils.Sequence):
         data_aug = np.zeros(odata.shape)
         for seq in range(self.batch_size):
             sequence = odata[seq, :, :, :]
-            clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+            clean_length = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
             sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)]\
-                .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+                .reshape([clean_length, sequence.shape[1], sequence.shape[2]])
             shift_x_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
             shift_y_fac = random.gauss(mu=0, sigma=self.sigma)  # Nunez
             # Applying the shift augmentation
@@ -87,35 +87,38 @@ class DataGenerator(keras.utils.Sequence):
             shift = matlib.repmat(shift_vec, int(sequence_clean.shape[0]*sequence_clean.shape[1]), 1)\
                 .reshape(sequence_clean.shape)
             sequence_shifted = sequence_clean + shift
-            data_aug[seq, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_width), (0, 0), (0, 0)],
+            data_aug[seq, :, :, :] = np.pad(sequence_shifted, [(0, odata.shape[1] - clean_length), (0, 0), (0, 0)],
                                             mode='constant', constant_values=0)
         return data_aug
 
     def noise_augmentation(self, odata):
-        max_width = self.dim[1]
+        data_aug = np.zeros(odata.shape)
+        num_joints = odata.shape[2]
         # print("Doing data noise augmentation.")
-        data_aug = np.zeros([odata.shape[0], odata.shape[1], odata.shape[2], odata.shape[3]])
-        num_seqncs = odata.shape[0]
-        # print("num_frames %s " % num_frames)
-        num_joints = odata.shape[1]
-        joints_total = random.randint(1, 4)  # random num of joints to augment
-        joints_range = list(np.arange(0, num_joints, 1))
-        noise_joints = []
-        for x in np.arange(joints_total):
-            id_j = random.choice(joints_range)
-            noise_joints.append(id_j)
-            joints_range.remove(id_j)
-        # print(noise_joints)
-        for seq in range(num_seqncs):
+        for seq in range(odata.shape[0]):
+            sequence = odata[seq, :, :, :]
+            clean_length = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+            # sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)]\
+            #     .reshape([clean_length, sequence.shape[1], sequence.shape[2]])
+            joints_total = random.randint(1, 4)  # random num of joints to augment
+            joints_range = list(np.arange(0, num_joints, 1))
+            noise_joints = []
+            for x in np.arange(joints_total):
+                id_j = random.choice(joints_range)
+                noise_joints.append(id_j)
+                joints_range.remove(id_j)
+                # print(noise_joints)
             for jnt in range(num_joints):
                 if jnt in noise_joints:
-                    noise_factors = np.ones([max_width, 3])
+                    noise_factors = np.ones([clean_length, 3])
                     noise_factors[:, 0] = noise_factors[:, 0] * random.gauss(mu=0, sigma=self.sigma)  # Nunez
                     noise_factors[:, 1] = noise_factors[:, 1] * random.gauss(mu=0, sigma=self.sigma)  # Nunez
                     noise_factors[:, 2] = noise_factors[:, 2] * random.gauss(mu=0, sigma=self.sigma)  # Nunez
-                    data_aug[seq, :, jnt, :] = odata[seq, :, jnt, :] + noise_factors
                     # print("Noise factors: ")
                     # print(noise_factors)
+                    sequence_noise = np.pad(noise_factors, [(0, odata.shape[1] - clean_length), (0, 0)],
+                                            mode='constant', constant_values=0)
+                    data_aug[seq, :, jnt, :] = odata[seq, :, jnt, :] + sequence_noise
                 else:
                     data_aug[seq, :, jnt, :] = odata[seq, :, jnt, :]
         return data_aug
@@ -190,7 +193,7 @@ class DataGenerator(keras.utils.Sequence):
             return shifted
         elif augtype == 'scale_shift':
             scaled = self.scale_augmentation(odata)
-            shifted_scaled = self.shift_uni_xyz_augmentation(scaled)
+            shifted_scaled = self.shift_gauss_xy_augmentation(scaled)
             return shifted_scaled
         elif augtype == 'translate':
             translated = self.translate_augmentation(odata)

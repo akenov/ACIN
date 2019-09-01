@@ -6,34 +6,34 @@ import math
 import os
 import numpy as np
 import itertools
-from numpy import matlib
+
 from datetime import datetime
 from DataGenerator import DataGenerator
 import keras
 from keras import regularizers
 from keras import backend as k
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, Reshape, Permute, Activation
+from keras.layers import Dense, Dropout, Flatten, Reshape
 from keras.layers import Conv2D, MaxPooling2D, LSTM, Masking, BatchNormalization
 from keras.callbacks import TensorBoard
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.utils import shuffle
 from sklearn.metrics import confusion_matrix
 
 
 def sliding_window_generator(sequence, label):
+    window_size = math.floor(COEFF_SLIDINGWINDOW * sequence.shape[0])
     label = label.reshape([1, -1])
     slided_window_samples = np.zeros([1, sequence.shape[0], sequence.shape[1], sequence.shape[2]])
     slided_window_labels = np.zeros([1, label.shape[1]])
 
-    clean_width = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
+    clean_length = int(sequence[~np.all(sequence == 0.0, axis=2)].shape[0]/sequence.shape[1])
     sequence_clean = sequence[~np.all(sequence == 0.0, axis=2)] \
-        .reshape([clean_width, sequence.shape[1], sequence.shape[2]])
+        .reshape([clean_length, sequence.shape[1], sequence.shape[2]])
 
-    for frame_id in range(sequence_clean.shape[0] - SLIDINGWINDOW_SIZE + 1):
-        window = sequence_clean[frame_id: frame_id+SLIDINGWINDOW_SIZE, :, :]
-        sequence_padded = np.pad(window, [(0, sequence.shape[0] - SLIDINGWINDOW_SIZE), (0, 0), (0, 0)],
+    for frame_id in range(sequence_clean.shape[0] - window_size + 1):
+        window = sequence_clean[frame_id: frame_id + window_size, :, :]
+        sequence_padded = np.pad(window, [(0, sequence.shape[0] - window_size), (0, 0), (0, 0)],
                                  mode='constant', constant_values=0)
         slided_window_samples = np.append(slided_window_samples, sequence_padded.reshape(
             [1, sequence.shape[0], sequence.shape[1], sequence.shape[2]]), axis=0)
@@ -50,8 +50,10 @@ def load_from_file(list_of_files):
 
     for file in list_of_files:
         print("Loading experiment: " + file)
-        fdata = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS).as_matrix()
-        flabel = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE).as_matrix()
+        df = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_JOINTS)
+        fdata = df.values
+        dl = pd.read_csv(file, sep=",", header=0, usecols=CLMNS_LABEL_FINE)
+        flabel = dl.values
 
         # Subselect data corresponding to the labels of interest
         # max_len = 0 # read 229, thus 500 fits all augmentation schemes
@@ -62,6 +64,9 @@ def load_from_file(list_of_files):
             label_series = False
             for i in np.arange(len(flabel)-1):
                 if flabel[i] == label:
+                    if np.count_nonzero(fdata[i, :66]) == 0:
+                        print("Empty labeled frame detected. Skipping.")
+                        continue
                     label_series = True
                     row = np.array(fdata[i]).reshape(NUM_JOINTS, 3)
                     sample_[s_idx, :, :] = row
@@ -69,8 +74,22 @@ def load_from_file(list_of_files):
                 if i < len(flabel) and flabel[i + 1] != label and label_series:
                     # print("LABEL JUMP DETECTED: %s " % flabel[i+1])
                     label_series = False
-                    # print("Saving sample for action: %s with length %d" % (label, s_idx))
-                    fdapool.append(sample_)
+                    print("Orignal sample for action: %s with length %d" % (label, s_idx))
+                    if 100 < s_idx <= 200:
+                        substep = 2
+                    elif 200 < s_idx <= 300:
+                        substep = 3
+                    elif 300 < s_idx <= 400:
+                        substep = 4
+                    elif s_idx > 400:
+                        substep = 5
+                    else:
+                        substep = 1
+                    subrange = np.arange(0, s_idx, substep)
+                    print("Adding subsample with length %d " % len(subrange))
+                    sub_sample = np.pad(sample_[subrange], [(0, NEW_MAX_WIDTH - len(subrange)), (0, 0), (0, 0)],
+                                        mode='constant', constant_values=0)
+                    fdapool.append(sub_sample)
                     feapool.append(label)
                     sample_ = np.zeros(fshape)
                     s_idx = 0
@@ -82,9 +101,9 @@ def load_from_file(list_of_files):
         fdapool.append(np.zeros(fshape))
         feapool.append('place')
 
-    data_raw = np.reshape(fdapool, [-1, MAX_WIDTH, NUM_JOINTS, 3])
+    data_raw = np.reshape(fdapool, [-1, NEW_MAX_WIDTH, NUM_JOINTS, 3])
 
-    print(le.fit(feapool).classes_)
+    # print(le.fit(feapool).classes_)
     # transforms alphabetically: A->Z : 0->25
     # G..rab -> 0
     # M..oveObj -> 1
@@ -94,6 +113,7 @@ def load_from_file(list_of_files):
     feat_labenc = le.fit_transform(np.array(feapool))
     # Generate OneHot feature matrix via OneHotEncoder()
     feat_onehot = ohe.fit_transform(feat_labenc.reshape(len(feat_labenc), 1))
+    # feat_onehot = ohe.fit_transform(np.array(feapool).reshape(len(feat_labenc), 1))
     print("Final dataset dimensions: " + str(data_raw.shape))
     return data_raw, feat_onehot
 
@@ -139,30 +159,18 @@ def run_keras_cnn_model(loso_, run_suffix):
 
     cnn_model = Sequential()
 
-    # cnn_model.add(BatchNormalization(input_shape=ishape))
-    # cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
-    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
-    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
-    # cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    # cnn_model.add(Dropout(COEFF_DROPOUT))
-    # cnn_model.add(Dense(300, activation='relu', use_bias=False))
-    # cnn_model.add(Dropout(COEFF_DROPOUT))
-    # cnn_model.add(Dense(100, activation='relu', use_bias=False))
-    # cnn_model.add(Flatten())
-    # cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
-
-    # Old MNIST Model with single Dense layer
     cnn_model.add(BatchNormalization(input_shape=ishape))
-    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
+    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
     cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(Dense(300, activation='relu', use_bias=False))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(Dense(100, activation='relu', use_bias=False))
     cnn_model.add(Flatten())
-    cnn_model.add(Dense(128, activation='relu', use_bias=False))
-    cnn_model.add(Dropout(COEFF_DROPOUT))
     cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     cnn_model.compile(loss=keras.losses.categorical_crossentropy,
@@ -257,8 +265,8 @@ def run_keras_lstm_model(loso_, run_suffix):
     lstm_model.add(Reshape(resh_shape, input_shape=ishape))
     lstm_model.add(Masking(mask_value=0.0, input_shape=lstm_model.layers[-1].output_shape))
     lstm_model.add(BatchNormalization(axis=2))
-    lstm_model.add(LSTM(128, return_sequences=True, stateful=False))
-    lstm_model.add(LSTM(64, stateful=False))
+    lstm_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2),
+                        stateful=False, use_bias=False, dropout=COEFF_DROPOUT))
     lstm_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     lstm_model.compile(loss=keras.losses.categorical_crossentropy,
@@ -275,7 +283,7 @@ def run_keras_lstm_model(loso_, run_suffix):
     #                          validation_data=(test_data, test_labels))
 
     history = lstm_model.fit_generator(generator=training_generator,
-                                       epochs=4*NUM_EPOCHS, validation_data=(test_data_, test_labels_),
+                                       epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
                                        shuffle=False, use_multiprocessing=MULTI_CPU,
                                        callbacks=[tensorboard])
 
@@ -372,6 +380,10 @@ def run_keras_nunez_model(loso_, run_suffix):
                        optimizer=get_optimizer(),
                        metrics=['accuracy'])
 
+    output_3 = conv_model.layers[3].output
+    x = k.print_tensor(output_3, message="TensorOut = ")
+    print(x.eval())
+
     conv_model.summary()
     print(datetime.now())
     print("Start training")
@@ -422,7 +434,7 @@ def run_keras_nunez_model(loso_, run_suffix):
 
     # nunez_model.add(Permute((2, 1, 3))) # no need in the Nunez shape style
     # print(nunez_model.layers[-1].output_shape)
-    nunez_model.add(Reshape((62, 200)))
+    nunez_model.add(Reshape((15, 200)))
     # print(nunez_model.layers[-1].output_shape)
     nunez_model.add(Masking(mask_value=0.0, input_shape=nunez_model.layers[-1].output_shape))
     nunez_model.add(BatchNormalization())
@@ -436,6 +448,14 @@ def run_keras_nunez_model(loso_, run_suffix):
                         optimizer=get_optimizer(),
                         metrics=['accuracy'])
 
+    # EXPERIMENT
+
+    output_10 = nunez_model.layers[10].output
+    x = k.print_tensor(output_10, message="TensorOut = ")
+    print(x.eval())
+
+    # END EXP
+
     nunez_model.summary()
     print(datetime.now())
     print("Start training")
@@ -443,6 +463,13 @@ def run_keras_nunez_model(loso_, run_suffix):
                                             epochs=int(NUM_EPOCHS*5), validation_data=(test_data_, test_labels_),
                                             shuffle=False, use_multiprocessing=MULTI_CPU,
                                             callbacks=[tensorboard])
+    # EXPERIMENT
+
+    output_10 = nunez_model.layers[10].output
+    x = k.print_tensor(output_10, message="TensorOut = ")
+    print(x.eval())
+
+    # END EXP
 
     print(datetime.now())
     rnn_scores = nunez_model.evaluate(test_data_, test_labels_, batch_size=batch_size_aug_cnn)
@@ -499,15 +526,16 @@ def print_summary():
     print("| AUGMENTATIONS: %s" % AUGMENTATIONS)
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     # print("| EXTEND_ACTIONS: " + str(EXTEND_ACTIONS))
-    # print("| USE_SLIDINGWINDOW: " + str(USE_SLIDINGWINDOW))
+    print("| USE_SLIDINGWINDOW: " + str(USE_SLIDINGWINDOW))
     # print("| USE_SCALER: " + str(USE_SCALER))
     print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| OPTIMIZER: " + OPTIMIZER[0])
+    print("| NUM_EPOCHS: " + str(NUM_EPOCHS))
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
-    print("| COEFF_SLIDINGWINDOW: " + str(SLIDINGWINDOW_SIZE))
+    print("| COEFF_SLIDINGWINDOW: " + str(COEFF_SLIDINGWINDOW))
     print("| COEFF_DROPOUT: " + str(COEFF_DROPOUT))
     print("| COEFF_REGULARIZATION_L2: " + str(COEFF_REGULARIZATION_L2))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
@@ -529,71 +557,92 @@ def print_summary():
 
 CLMNS_JOINTS = [
     'boneCenter000X',
-    'boneCenter000Y',
     'boneCenter000Z',
+    'boneCenter000Y',
+
     'boneCenter001X',
-    'boneCenter001Y',
     'boneCenter001Z',
+    'boneCenter001Y',
+
     'boneCenter002X',
-    'boneCenter002Y',
     'boneCenter002Z',
+    'boneCenter002Y',
+
     'boneCenter003X',
-    'boneCenter003Y',
     'boneCenter003Z',
+    'boneCenter003Y',
+
     'boneCenter010X',
-    'boneCenter010Y',
     'boneCenter010Z',
+    'boneCenter010Y',
+
     'boneCenter011X',
-    'boneCenter011Y',
     'boneCenter011Z',
+    'boneCenter011Y',
+
     'boneCenter012X',
-    'boneCenter012Y',
     'boneCenter012Z',
+    'boneCenter012Y',
+
     'boneCenter013X',
-    'boneCenter013Y',
     'boneCenter013Z',
+    'boneCenter013Y',
+
     'boneCenter020X',
-    'boneCenter020Y',
     'boneCenter020Z',
+    'boneCenter020Y',
+
     'boneCenter021X',
-    'boneCenter021Y',
     'boneCenter021Z',
+    'boneCenter021Y',
+
     'boneCenter022X',
-    'boneCenter022Y',
     'boneCenter022Z',
+    'boneCenter022Y',
+
     'boneCenter023X',
-    'boneCenter023Y',
     'boneCenter023Z',
+    'boneCenter023Y',
+
     'boneCenter030X',
-    'boneCenter030Y',
     'boneCenter030Z',
+    'boneCenter030Y',
+
     'boneCenter031X',
-    'boneCenter031Y',
     'boneCenter031Z',
+    'boneCenter031Y',
+
     'boneCenter032X',
-    'boneCenter032Y',
     'boneCenter032Z',
+    'boneCenter032Y',
+
     'boneCenter033X',
-    'boneCenter033Y',
     'boneCenter033Z',
+    'boneCenter033Y',
+
     'boneCenter040X',
-    'boneCenter040Y',
     'boneCenter040Z',
+    'boneCenter040Y',
+
     'boneCenter041X',
-    'boneCenter041Y',
     'boneCenter041Z',
+    'boneCenter041Y',
+
     'boneCenter042X',
-    'boneCenter042Y',
     'boneCenter042Z',
+    'boneCenter042Y',
+
     'boneCenter043X',
-    'boneCenter043Y',
     'boneCenter043Z',
+    'boneCenter043Y',
+
     'wristPosition0X',
-    'wristPosition0Y',
     'wristPosition0Z',
+    'wristPosition0Y',
+
     'elbowPosition0X',
+    'elbowPosition0Z',
     'elbowPosition0Y',
-    'elbowPosition0Z'
 ]
 
 CLMNS_LABEL_FINE = [
@@ -659,12 +708,13 @@ VALID_LABELS = ["reach", "grab", "moveObject", "place"]
 DATASET_NAME = 'AVCExt'
 NUM_CLASSES = 4
 MAX_WIDTH = 500
+NEW_MAX_WIDTH = 120
 NUM_JOINTS = 22
 # PARAMETERS #
 
 # EXPERIMENTS_DIR = "./AVCexperimentsData/"
 # MULTI_CPU = True
-EXPERIMENTS_DIR = "D:\\!DA-20092018\\AVCexperimentsData\\"
+EXPERIMENTS_DIR = "D:\\!DA-20092018\\AVCexperimentsData"
 MULTI_CPU = False
 # SET OUTPUT_SAVES OUTSIDE THE DOCKER CONTAINER
 OUTPUT_SAVES = "./"
@@ -673,7 +723,7 @@ USE_SLIDINGWINDOW = True
 # USE_SCALER = False
 CNN_TRAINABLE = True
 FRAMES_THRESHOLD = 13
-SLIDINGWINDOW_SIZE = 80
+COEFF_SLIDINGWINDOW = 0.8
 COEFF_DROPOUT = 0.6
 COEFF_REGULARIZATION_L2 = 0.015
 CNN_BATCH_SIZE = 50
@@ -698,9 +748,9 @@ OPTIMIZER = [
     # "AdaDelta"
 ]
 TRAIN_MODELS = [
-    'CNN',
+    # 'CNN',
     # 'LSTM',
-    # 'ConvRNN'
+    'ConvRNN'
 ]
 # END OF PARAMETERS
 
@@ -709,7 +759,7 @@ ohe = OneHotEncoder(sparse=False)
 
 sample_filelist = gen_file_set(batch_names)
 
-RESULTS_DIR = OUTPUT_SAVES + DATASET_NAME + "." + datetime.today().strftime('%d-%m-%Y') + "/"
+RESULTS_DIR = OUTPUT_SAVES + DATASET_NAME + "." + datetime.today().strftime('%d-%m-%Y_%H%M') + "/"
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
@@ -718,15 +768,17 @@ for model in TRAIN_MODELS:
         RESULTS = []
         CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
+            #     #     #      #      #      #      #      #      #      #      #
+            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
+            if key != "kfold0":
+                print("Skipping split " + key)
+                continue
+            #     #     #      #      #      #      #      #      #      #      #
+
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
             print("| File Batch: " + key)
             print("| Augmentations: %s" % AUGMENTATIONS)
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-
-            # if EXTEND_ACTIONS:
-            #     print("Extend Actions #Frames Threshold: %d" % FRAMES_THRESHOLD)
-            # if USE_SLIDINGWINDOW:
-            #     print("Sliding Window Length: %.2f" % COEFF_SLIDINGWINDOW)
 
             test_files = []
             for batch_pair in batch_group:
@@ -750,8 +802,8 @@ for model in TRAIN_MODELS:
                 if USE_SLIDINGWINDOW:
                     print("Generating sliding windows samples. This can take a while...")
                     for sample_id in range(train_data.shape[0]):
-                        train_data_sliwin, train_labels_sliwin = sliding_window_generator(
-                            train_data[sample_id, :, :, :], train_labels[sample_id, :])
+                        train_data_sliwin, train_labels_sliwin = sliding_window_generator(train_data[sample_id, :, :, :]
+                                                                                          , train_labels[sample_id, :])
                         train_data = np.append(train_data, train_data_sliwin, axis=0)
                         train_labels = np.append(train_labels, train_labels_sliwin, axis=0)
 

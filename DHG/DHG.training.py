@@ -38,7 +38,6 @@ def extend_sequences(sequence_, avg_length=10):
 
 
 def skeleton_reshape(sequence_):
-    # new_sequence = np.zeros([NUM_JOINTS, MAX_WIDTH, 3])
     new_sequence = np.zeros([MAX_WIDTH, NUM_JOINTS, 3])
     sequence_length = sequence_.shape[0]
     for frame_id in range(sequence_length):
@@ -192,14 +191,17 @@ def run_keras_cnn_model(loso_, run_suffix):
     cnn_model = Sequential()
 
     cnn_model.add(BatchNormalization(input_shape=ishape))
-    cnn_model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(Conv2D(20, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
-    cnn_model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', use_bias=False))
+    cnn_model.add(Conv2D(50, kernel_size=(2, 2), activation='relu', padding='same', use_bias=False))
+    cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+    cnn_model.add(Conv2D(100, kernel_size=(3, 3), activation='relu', padding='same', use_bias=False))
     cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
     cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(Dense(300, activation='relu', use_bias=False))
+    cnn_model.add(Dropout(COEFF_DROPOUT))
+    cnn_model.add(Dense(100, activation='relu', use_bias=False))
     cnn_model.add(Flatten())
-    cnn_model.add(Dense(128, activation='relu', use_bias=False))
-    cnn_model.add(Dropout(COEFF_DROPOUT))
     cnn_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     cnn_model.compile(loss=keras.losses.categorical_crossentropy,
@@ -293,8 +295,8 @@ def run_keras_lstm_model(loso_, run_suffix):
     lstm_model.add(Reshape(resh_shape, input_shape=ishape))
     lstm_model.add(Masking(mask_value=0.0, input_shape=lstm_model.layers[-1].output_shape))
     lstm_model.add(BatchNormalization(axis=2))
-    lstm_model.add(LSTM(128, return_sequences=True, stateful=False))
-    lstm_model.add(LSTM(64, stateful=False))
+    lstm_model.add(LSTM(100, kernel_regularizer=regularizers.l2(COEFF_REGULARIZATION_L2),
+                        stateful=False, use_bias=False, dropout=COEFF_DROPOUT))
     lstm_model.add(Dense(NUM_CLASSES, activation='softmax'))
 
     lstm_model.compile(loss=keras.losses.categorical_crossentropy,
@@ -311,7 +313,7 @@ def run_keras_lstm_model(loso_, run_suffix):
     #                          validation_data=(test_data, test_labels))
 
     history = lstm_model.fit_generator(generator=training_generator,
-                                       epochs=4*NUM_EPOCHS,
+                                       epochs=NUM_EPOCHS, validation_data=(test_data_, test_labels_),
                                        shuffle=False, use_multiprocessing=MULTI_CPU,
                                        callbacks=[tensorboard])
 
@@ -539,6 +541,7 @@ def print_summary():
     print("| CNN_TRAINABLE: " + str(CNN_TRAINABLE))
     print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
     print("| OPTIMIZER: " + OPTIMIZER[0])
+    print("| NUM_EPOCHS: " + str(NUM_EPOCHS))
     print("| CNN_BATCH_SIZE: " + str(CNN_BATCH_SIZE))
     print("| RNN_BATCH_SIZE: " + str(RNN_BATCH_SIZE))
     print("| FRAMES_THRESHOLD: " + str(FRAMES_THRESHOLD))
@@ -689,7 +692,7 @@ for nseq in np.arange(0, len(frames_info), 1):
     SEQ_INFO[row[0]-1, row[1]-1, row[2]-1, row[3]-1, 0] = row[4]
     SEQ_INFO[row[0]-1, row[1]-1, row[2]-1, row[3]-1, 1] = row[5]
 
-RESULTS_DIR = OUTPUT_SAVES + DATASET_NAME + "." + datetime.today().strftime('%d-%m-%Y') + "/"
+RESULTS_DIR = OUTPUT_SAVES + DATASET_NAME + "." + datetime.today().strftime('%d-%m-%Y_%H%M') + "/"
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
@@ -698,10 +701,13 @@ for model in TRAIN_MODELS:
         RESULTS = []
         CNN_RESULTS = []
         for key, batch_group in itertools.groupby(batch_names, lambda x: x[0]):
-            # for subject in subject_list:
-            # loso_id = subject.split('_')[1]
-            # loso = "loso" + loso_id[:len(loso_id)-1]
-            # loso = subject[:len(subject)-1].replace('_', '').upper()
+            #     #     #      #      #      #      #      #      #      #      #
+            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
+            if key != "kfold0":
+                print("Skipping split " + key)
+                continue
+            #     #     #      #      #      #      #      #      #      #      #
+
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
             print("| File Batch: " + key)
             print("| Augmentations: %s" % AUGMENTATIONS)
@@ -710,13 +716,6 @@ for model in TRAIN_MODELS:
             if USE_SLIDINGWINDOW:
                 print("| Sliding Window Length: %.2f" % COEFF_SLIDINGWINDOW)
             print("+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +")
-
-            #     #     #      #      #      #      #      #      #      #      #
-            # SPEED UP RELATIVE EVAL: @JB,@MATT - USE SINGLE SPLIT
-            if key != "kfold0":
-                print("Skipping split " + key)
-                continue
-            #     #     #      #      #      #      #      #      #      #      #
 
             test_files = []
             for batch_pair in batch_group:
