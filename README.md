@@ -1,0 +1,1 @@
+Source code to my master thesis "Comparison of Different Machine Learning Algorithms for Action Recognition" at Vienna University of Technology, 2019
